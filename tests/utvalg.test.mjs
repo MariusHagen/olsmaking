@@ -6,13 +6,13 @@ import { velg, bytter, kandidater, justertScore, fraVarenumre, NETT } from "../s
 
 const data = JSON.parse(readFileSync(new URL("./fixtures/juleol-2026-11-12.json", import.meta.url), "utf-8"));
 const TORG = "Trondheim, Trondheim Torg";
-const pris = (r) => r.rekke.reduce((s, o) => s + o.flasker * o.pris, 0) + (r.alkoholfritt ? r.alkoholfritt.flasker * r.alkoholfritt.pris : 0);
+const pris = (r) => [...r.rekke, ...(r.alkoholfrie ?? [])].reduce((s, o) => s + o.flasker * o.pris, 0);
 
 test("rekka holder budsjettet, eller sier at det ikke går opp", () => {
   let gikkOpp = 0, gikkIkke = 0;
   for (let personer = 2; personer <= 14; personer++) {
     for (const budsjett of [400, 800, 1500, 2500, 5000]) {
-      const r = velg(data, { butikk: TORG, personer, budsjett, antall: 8, alkoholfritt: true });
+      const r = velg(data, { butikk: TORG, personer, budsjett, antall: 8, alkoholfrie: personer % 3 });
       if (r.feil) {
         assert.equal(r.rekke.length, 0);
         gikkIkke++;
@@ -67,6 +67,35 @@ test("for mange øl for typene gir beskjed om hvor mange som går", () => {
   assert.equal(velg(data, { butikk: TORG, personer: 5, budsjett: 9000, antall: 4, typer: [] }).feil, "Velg minst én type.");
 });
 
+test("antall alkoholfrie: så mange som ønsket, aldri flere enn det finnes, og innenfor budsjettet", () => {
+  const af = kandidater(data, { butikk: TORG, personer: 5 }).filter((o) => o.gruppe === "Alkoholfritt").sort((a, b) => b.justert - a.justert);
+  const finnes = af.length;
+  assert.ok(finnes >= 2, `bare ${finnes} alkoholfrie i fixturen`);
+  for (const onsket of [0, 1, 2, 4]) {
+    const r = velg(data, { butikk: TORG, personer: 5, budsjett: 1800, antall: 8, alkoholfrie: onsket });
+    assert.equal(r.alkoholfrie.length, Math.min(onsket, finnes), `${onsket} ønsket`);
+    if (onsket > 0) assert.equal(r.alkoholfrie[0].id, af[0].id, "det beste alkoholfrie først");
+    assert.ok(r.alkoholfrie.every((o) => o.gruppe === "Alkoholfritt"));
+    assert.equal(new Set(r.alkoholfrie.map((o) => o.id)).size, r.alkoholfrie.length);
+    assert.ok(pris(r) <= 1800);
+  }
+  // Gamle lenker med alkoholfritt: true gir ett.
+  assert.equal(velg(data, { butikk: TORG, personer: 5, budsjett: 1800, antall: 8, alkoholfritt: true }).alkoholfrie.length, 1);
+});
+
+test("med trangt budsjett velges et billigere alkoholfritt heller enn at rekka ikke går opp", () => {
+  // 650 kr: det beste alkoholfrie (61 kr) og den billigste rekka (597 kr) går ikke opp, men det billigste (51 kr) gjør.
+  const r = velg(data, { butikk: TORG, personer: 5, budsjett: 650, antall: 8, alkoholfrie: 1 });
+  assert.equal(r.feil, null);
+  assert.equal(r.rekke.length, 8);
+  assert.equal(r.alkoholfrie.length, 1);
+  assert.ok(pris(r) <= 650);
+  // Går det ikke opp i det hele tatt, regner meldingen med de alkoholfrie som ble ønsket.
+  const ikke = velg(data, { butikk: TORG, personer: 5, budsjett: 500, antall: 8, alkoholfrie: 1 });
+  assert.match(ikke.feil, /Budsjettet holder ikke/);
+  assert.ok(ikke.minstBudsjett > 597);
+});
+
 test("bare de valgte typene er med", () => {
   const typer = ["Belgisk", "Mjød", "Humle og IPA"];
   const r = velg(data, { butikk: TORG, personer: 5, budsjett: 3000, antall: 6, typer });
@@ -92,10 +121,10 @@ test("mjøden kommer sist, og innenfor en type går det fra svakt til sterkt", (
 });
 
 test("bytter er fra samme gruppe, ikke allerede i rekka, og holder budsjettet", () => {
-  const valg = { butikk: TORG, personer: 5, budsjett: 1500, antall: 8 };
+  const valg = { butikk: TORG, personer: 5, budsjett: 1500, antall: 8, alkoholfrie: 2 };
   const r = velg(data, valg);
   for (let plass = 0; plass < r.rekke.length; plass++) {
-    for (const alt of bytter(data, valg, r.rekke, r.alkoholfritt, plass)) {
+    for (const alt of bytter(data, valg, r.rekke, r.alkoholfrie, plass)) {
       assert.equal(alt.gruppe, r.rekke[plass].gruppe);
       assert.ok(!r.rekke.some((o) => o.id === alt.id));
       const ny = { ...r, rekke: r.rekke.map((o, i) => (i === plass ? alt : o)) };

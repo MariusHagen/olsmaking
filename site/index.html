@@ -5,76 +5,110 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ølsmaking</title>
 <meta name="description" content="Sett sammen en juleølsmaking fra Vinmonopolet: velg butikk, antall personer og budsjett, og få øl fra ulike smaksgrupper, fra lett til tungt.">
+<meta name="theme-color" content="#133328">
 <style>
-/* Én smal kolonne: valgene, glassrekka, tallene, ett avsnitt per øl, handlelista og hele hylla. Bare systemfonter, så siden ikke henter noe fra andre. */
+/* Mørkegrønt julehode over hele bredden, så én smal kolonne: valgene, glassrekka, tallene, ett avsnitt per øl,
+   handlelista og hele hylla. Julerødt på det man trykker på, gull på score. Bare systemfonter. */
 :root {
-  --bg: #F1F4F0; --surface: #FFFFFF; --ink: #15231C; --muted: #55645C; --line: #D5DDD7;
-  --accent: #1C5842; --accent-soft: #DFEBE4; --warm: #A35E0B; --glass: #93A299; --danger: #A3302B;
+  --bg: #F6F7F4; --surface: #FFFFFF; --ink: #1B2420; --muted: #5A6660; --line: #DCE2DC;
+  --accent: #1E5A43; --accent-soft: #E3EEE7; --rod: #B3262E; --rod-soft: #FBE9E8; --gull: #9C6F0B;
+  --glass: #93A299; --danger: #A3302B;
+  --hode: #133328; --hode-ink: #F4F1E8; --hode-muted: #C6D4CC; --gull-lys: #EBC765;
   --display: "Avenir Next", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0D1411; --surface: #141E19; --ink: #E4ECE7; --muted: #98A89F; --line: #25332C;
-    --accent: #7BCBA8; --accent-soft: #1A2C24; --warm: #E2A746; --glass: #5F7068; --danger: #F08A80;
+    --bg: #0C1613; --surface: #13211C; --ink: #E6ECE8; --muted: #9AAAA2; --line: #24352E;
+    --accent: #7FCBA8; --accent-soft: #1A2E26; --rod: #EF6A64; --rod-soft: #3A1E1D; --gull: #E9BE52;
+    --glass: #5F7068; --danger: #F08A80;
+    --hode: #0A1B16; --hode-ink: #F3F1EA; --hode-muted: #AFC2B9; --gull-lys: #E9C35A;
     color-scheme: dark;
   }
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.55 var(--body); }
-.wrap {
-  max-width: 60rem; margin: 0 auto; display: grid; gap: 48px;
-  padding-block: max(32px, env(safe-area-inset-top, 0px)) max(64px, env(safe-area-inset-bottom, 0px));
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-}
+.sider { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 60rem; margin: 0 auto; display: grid; gap: 44px; padding-block: 0 max(64px, env(safe-area-inset-bottom, 0px)); }
 h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 h1 { font-size: clamp(2rem, 6vw, 3.2rem); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
 h2 { font-size: 1.5rem; font-weight: 800; line-height: 1.2; }
+h2.stjerne::before { content: "✦"; color: var(--gull); font-size: .8em; margin-right: .4em; }
 h3 { font-size: 1.15rem; font-weight: 600; line-height: 1.25; }
 p { margin: 0; }
 a { color: var(--accent); text-underline-offset: 3px; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.eyebrow { font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
-.lead { font-size: 1.08rem; color: var(--muted); max-width: 40rem; }
-header, .section { display: grid; gap: 16px; }
+.section { display: grid; gap: 16px; }
 .section > p { color: var(--muted); max-width: 42rem; }
-.num { font-variant-numeric: tabular-nums; }
 .knapp { appearance: none; font: 600 .9rem var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer; }
-.knapp:hover { border-color: var(--accent); }
-.knapp.primar { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.knapp:hover { border-color: var(--rod); }
+.knapp.primar { background: var(--rod); border-color: var(--rod); color: #fff; }
+.lenkeknapp { appearance: none; background: none; border: 0; padding: 0; color: var(--accent); font: 600 .85rem var(--body); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.hjelp { font-size: .8rem; color: var(--muted); }
+.hjelp.feil { color: var(--danger); }
+
+/* Julehodet */
+.julehode { position: relative; overflow: hidden; color: var(--hode-ink); padding-top: env(safe-area-inset-top, 0px);
+  background: radial-gradient(120% 160% at 85% -20%, #2B5E4A 0%, var(--hode) 60%); }
+.julehode canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.julelys { position: relative; height: 30px; filter: drop-shadow(0 0 5px rgba(255, 214, 140, .55));
+  background:
+    radial-gradient(circle at 15px 18px, #FF5C5C 0 5px, transparent 5.6px),
+    radial-gradient(circle at 45px 21px, #FFD15C 0 5px, transparent 5.6px),
+    radial-gradient(circle at 75px 18px, #66DE9C 0 5px, transparent 5.6px),
+    radial-gradient(circle at 105px 21px, #9CCBFF 0 5px, transparent 5.6px),
+    linear-gradient(to bottom, transparent 0 11px, rgba(255, 255, 255, .28) 11px 12px, transparent 12px);
+  background-size: 120px 30px; background-repeat: repeat-x; }
+.julelys::after { content: ""; position: absolute; inset: 0; background-size: 120px 30px; background-repeat: repeat-x;
+  background-image: radial-gradient(circle at 15px 18px, rgba(255, 255, 255, .95) 0 2px, transparent 3px),
+    radial-gradient(circle at 75px 18px, rgba(255, 255, 255, .95) 0 2px, transparent 3px);
+  animation: blink 2.6s ease-in-out infinite alternate; }
+@keyframes blink { from { opacity: .15; } to { opacity: 1; } }
+.hode-innhold { position: relative; max-width: 60rem; margin: 0 auto; display: grid; gap: 14px; padding-block: 18px 44px; }
+.hode-innhold .eyebrow { font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--gull-lys); }
+.hode-innhold .lead { font-size: 1.08rem; color: var(--hode-muted); max-width: 40rem; }
 
 /* Valgene */
-.valg { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+.valg { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); margin-top: -28px; position: relative;
+  box-shadow: 0 10px 30px -18px rgba(10, 30, 22, .45); }
 /* Butikknavnene er lange, så butikkfeltet får mest plass når alt står på én rad. */
 @media (min-width: 760px) { .valg { grid-template-columns: minmax(0, 1.7fr) repeat(3, minmax(0, 1fr)); } }
 .felt { display: grid; gap: 6px; align-content: start; min-width: 0; }
-.felt label, .felt .etikett { font-size: .85rem; font-weight: 600; }
+.felt > label, .felt .etikett { font-size: .85rem; font-weight: 600; }
 .felt input[type="text"], .felt input[type="number"], .felt select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; width: 100%; min-width: 0; }
-.felt .hjelp { font-size: .8rem; color: var(--muted); }
-.felt .hjelp.feil { color: var(--danger); }
 .stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; width: max-content; background: var(--bg); }
 .stepper button { appearance: none; border: 0; background: transparent; color: var(--ink); font: 600 1.2rem var(--body); width: 44px; height: 42px; cursor: pointer; }
-.stepper button:hover { background: var(--accent-soft); }
+.stepper button:hover { background: var(--rod-soft); }
 .stepper button:disabled { opacity: .35; cursor: default; background: transparent; }
 .stepper output { min-width: 5.5rem; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
-.avkryss { display: flex; gap: 10px; align-items: center; font-size: .95rem; padding-top: 4px; }
-.avkryss input { width: 20px; height: 20px; accent-color: var(--accent); }
+
+/* Butikksøket */
+.kombo { position: relative; }
+.kombo ul { position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; right: 0; max-height: 18rem; overflow-y: auto; margin: 0; padding: 4px; list-style: none;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 28px -12px rgba(0, 0, 0, .35); }
+.kombo li { display: flex; justify-content: space-between; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer; font-size: .95rem; }
+.kombo li .info { color: var(--muted); font-size: .82rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kombo li[aria-selected="true"], .kombo li:hover { background: var(--rod-soft); }
+.kombo li.ingen { cursor: default; color: var(--muted); }
+.kombo li.ingen:hover { background: none; }
+.butikk-under { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+
+/* Typene */
 .typer { grid-column: 1 / -1; border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 8px; }
 .typer legend { padding: 0; margin-bottom: 8px; font-size: .85rem; font-weight: 600; }
 .typer-liste { display: flex; flex-wrap: wrap; gap: 8px; }
 .typer-liste label { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px 6px 10px; font-size: .88rem; cursor: pointer; background: var(--bg); }
-.typer-liste label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
-.typer-liste input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.typer-liste label:has(input:checked) { border-color: var(--rod); background: var(--rod-soft); }
+.typer-liste input { width: 16px; height: 16px; margin: 0; accent-color: var(--rod); }
 .typer-under { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
-.typer-under .hjelp { font-size: .8rem; color: var(--muted); }
-.lenkeknapp { appearance: none; background: none; border: 0; padding: 0; color: var(--accent); font: 600 .85rem var(--body); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
 /* Status og glassrekka */
 .status { font-size: 1rem; }
 .status.feil { color: var(--danger); font-weight: 600; }
+.tom { background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; padding: 22px; color: var(--muted); }
 .lenkeinfo { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: .92rem; color: var(--muted); }
 .lineup { display: grid; grid-template-columns: repeat(var(--antall, 8), minmax(0, 1fr)); gap: 8px; align-items: start; margin: 0; }
 .lineup a { display: grid; justify-items: center; align-content: start; gap: 6px; text-decoration: none; color: var(--ink); border-radius: 10px; padding-block: 6px; }
@@ -103,20 +137,19 @@ header, .section { display: grid; gap: 16px; }
 .utsolgt { font-size: .8rem; font-weight: 600; color: var(--danger); border: 1px solid var(--danger); border-radius: 999px; padding: 1px 8px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 1px var(--glass); flex: none; display: inline-block; }
 .facts { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: .9rem; font-variant-numeric: tabular-nums; }
-.facts .score { color: var(--warm); font-weight: 600; }
+.facts .score { color: var(--gull); font-weight: 600; }
 .facts .pour { color: var(--accent); font-weight: 600; }
 .handlinger { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: .88rem; }
-details.bytt summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+details.bytt summary { cursor: pointer; color: var(--rod); font-weight: 600; }
 .alternativer { display: grid; gap: 8px; margin-top: 10px; }
 .alternativer button { text-align: left; display: grid; gap: 2px; font: inherit; font-size: .9rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; cursor: pointer; }
-.alternativer button:hover { border-color: var(--accent); }
+.alternativer button:hover { border-color: var(--rod); }
 .alternativer .meta { color: var(--muted); font-size: .82rem; font-variant-numeric: tabular-nums; }
 
 /* Handlelista */
 .handleliste { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; }
 .handleliste ol { margin: 0; padding-left: 1.4rem; display: grid; gap: 6px; font-variant-numeric: tabular-nums; }
 .handleliste .sum { font-weight: 600; }
-.handleliste .hjelp { color: var(--muted); font-size: .85rem; }
 .knapper { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .kopistatus { font-size: .88rem; color: var(--accent); }
 
@@ -131,7 +164,7 @@ details.bytt summary { cursor: pointer; color: var(--accent); font-weight: 600; 
 .count { font-size: .9rem; color: var(--muted); }
 .list { display: grid; border-top: 1px solid var(--line); list-style: none; margin: 0; padding: 0; }
 .row { display: grid; grid-template-columns: 3.4rem minmax(0, 1fr) auto; gap: 12px; align-items: center; padding-block: 10px; border-bottom: 1px solid var(--line); }
-.badge { font: 800 1rem var(--display); font-variant-numeric: tabular-nums; color: var(--warm); }
+.badge { font: 800 1rem var(--display); font-variant-numeric: tabular-nums; color: var(--gull); }
 .badge.usikker { color: var(--muted); font-weight: 600; }
 .badge.ingen { color: var(--muted); font: 400 .78rem/1.2 var(--body); }
 .row-name { min-width: 0; display: grid; gap: 2px; }
@@ -140,30 +173,41 @@ details.bytt summary { cursor: pointer; color: var(--accent); font-weight: 600; 
 .row-sub { font-size: .82rem; color: var(--muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .row-facts { font-size: .85rem; font-variant-numeric: tabular-nums; text-align: right; color: var(--muted); white-space: nowrap; }
 .row-facts b { color: var(--ink); font-weight: 600; }
-.mine { font-size: .72rem; font-weight: 600; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 0 7px; }
+.mine { font-size: .72rem; font-weight: 600; color: var(--rod); border: 1px solid var(--rod); border-radius: 999px; padding: 0 7px; }
 @media (max-width: 560px) {
   .row { grid-template-columns: 3rem minmax(0, 1fr); }
   .row-facts { grid-column: 2; text-align: left; white-space: normal; }
 }
 footer { font-size: .88rem; color: var(--muted); display: grid; gap: 8px; max-width: 42rem; border-top: 1px solid var(--line); padding-top: 20px; }
+footer .hilsen { font-family: var(--display); font-weight: 700; color: var(--rod); }
 [hidden] { display: none !important; }
-@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+@media (prefers-reduced-motion: reduce) { .julelys::after { animation: none; opacity: .6; } }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
+<header class="julehode">
+  <canvas id="sno" aria-hidden="true"></canvas>
+  <div class="julelys" aria-hidden="true"></div>
+  <div class="hode-innhold sider">
     <p class="eyebrow">Juleøl og julemjød fra Vinmonopolet</p>
     <h1>Sett sammen en juleølsmaking</h1>
     <p class="lead">Velg butikk, hvor mange dere blir og hvor mye dere vil bruke. Siden plukker øl fra ulike smaksgrupper, med best mulig score på Untappd innenfor budsjettet, og setter dem i rekkefølge fra lett til tungt.</p>
-  </header>
+  </div>
+</header>
 
+<div class="wrap sider">
   <form class="valg" id="valg" aria-label="Valg for smakingen">
     <div class="felt">
-      <label for="butikk">Butikk</label>
-      <input type="text" id="butikk" list="butikker" autocomplete="off" spellcheck="false" aria-describedby="butikk-hjelp">
-      <datalist id="butikker"></datalist>
-      <span class="hjelp" id="butikk-hjelp">Skriv for å søke, eller velg «Bestill på nett».</span>
+      <label for="butikk" id="butikk-etikett">Butikk</label>
+      <div class="kombo">
+        <input type="text" id="butikk" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="butikk-liste"
+          autocomplete="off" spellcheck="false" placeholder="Søk på by eller butikk">
+        <ul id="butikk-liste" role="listbox" aria-labelledby="butikk-etikett" hidden></ul>
+      </div>
+      <div class="butikk-under">
+        <button type="button" class="lenkeknapp" id="naermest">Finn nærmeste butikk</button>
+        <span class="hjelp" id="butikk-hjelp" role="status"></span>
+      </div>
     </div>
     <div class="felt">
       <span class="etikett" id="personer-etikett">Antall personer</span>
@@ -180,20 +224,22 @@ footer { font-size: .88rem; color: var(--muted); display: grid; gap: 8px; max-wi
     <div class="felt">
       <label for="antall">Antall øl</label>
       <select id="antall"></select>
-      <label class="avkryss"><input type="checkbox" id="alkoholfritt"> Ta med ett alkoholfritt</label>
+      <label for="alkoholfrie">Alkoholfrie øl i tillegg</label>
+      <select id="alkoholfrie"></select>
     </div>
     <fieldset class="typer">
       <legend>Typer</legend>
       <div class="typer-liste" id="typer"></div>
       <div class="typer-under">
-        <button type="button" class="lenkeknapp" id="alle-typer">Velg alle</button>
+        <button type="button" class="lenkeknapp" id="alle-typer">Fjern alle</button>
         <span class="hjelp">Velger du færre typer enn øl, kommer det flere av hver type.</span>
       </div>
     </fieldset>
   </form>
 
   <section class="section" aria-labelledby="rekka-h">
-    <h2 id="rekka-h">Smakerekka</h2>
+    <h2 id="rekka-h" class="stjerne">Smakerekka</h2>
+    <p class="tom" id="tom" hidden>Velg en butikk, eller «Bestill på nett», så setter siden sammen rekka.</p>
     <p class="status" id="status" role="status">Henter øl …</p>
     <div class="lenkeinfo" id="lenkeinfo" hidden>
       <span>Rekka kommer fra en delt lenke, med dagens pris og lager.</span>
@@ -202,11 +248,11 @@ footer { font-size: .88rem; color: var(--muted); display: grid; gap: 8px; max-wi
     <nav class="lineup" id="lineup" aria-label="Rekkefølgen"></nav>
     <div class="stats" id="stats"></div>
     <div class="picks" id="picks"></div>
-    <div id="alkoholfritt-ol"></div>
+    <div id="alkoholfrie-ol"></div>
   </section>
 
   <section class="handleliste" id="handleliste" aria-labelledby="handle-h" hidden>
-    <h2 id="handle-h">Handleliste</h2>
+    <h2 id="handle-h" class="stjerne">Handleliste</h2>
     <ol id="handle-liste"></ol>
     <p class="sum" id="handle-sum"></p>
     <div class="knapper">
@@ -216,8 +262,8 @@ footer { font-size: .88rem; color: var(--muted); display: grid; gap: 8px; max-wi
     </div>
   </section>
 
-  <section class="section" aria-labelledby="hylla-h">
-    <h2 id="hylla-h">Alt som står på hylla</h2>
+  <section class="section" id="hylla" aria-labelledby="hylla-h" hidden>
+    <h2 id="hylla-h" class="stjerne">Alt som står på hylla</h2>
     <p id="hylla-intro"></p>
     <div class="controls">
       <input id="q" type="search" placeholder="Søk etter navn eller stil" aria-label="Søk etter navn eller stil">
@@ -241,10 +287,11 @@ footer { font-size: .88rem; color: var(--muted); display: grid; gap: 8px; max-wi
 <script type="module">
 import { velg, bytter, fraVarenumre, paLager, NETT, ALKOHOLFRITT } from "./utvalg.mjs";
 
-const STANDARD = { butikk: "Trondheim, Trondheim Torg", personer: 5, budsjett: 1500, antall: 8, alkoholfritt: false };
+const STANDARD = { butikk: null, personer: 5, budsjett: 1500, antall: 8, alkoholfrie: 0 };
 const NETT_TEKST = "Bestill på nett";
-const MIN_PERSONER = 2, MAX_PERSONER = 14, MIN_ANTALL = 4, MAX_ANTALL = 10;
+const MIN_PERSONER = 2, MAX_PERSONER = 14, MIN_ANTALL = 4, MAX_ANTALL = 10, MAX_ALKOHOLFRIE = 4;
 const USIKKER = 30;
+const HUSK = "olsmaking.butikk";
 const FARGE = {
   "Alkoholfritt": ["#BFD9C8", "#FBF5E6"], "Surt og fruktig": ["#C8415E", "#F4D6DD"], "Lys og frisk": ["#EBCF6A", "#FBF5E6"],
   "Gårdsøl og saison": ["#DDA33A", "#FBF5E6"], "Humle og IPA": ["#EEA33F", "#FBF5E6"], "Klassisk juleøl": ["#7A3415", "#EAD9BF"],
@@ -260,8 +307,11 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const kr = (v) => `${nf2.format(v)} kr`;
 const $ = (id) => document.getElementById(id);
 const dot = (g) => `<span class="dot" style="background:${(FARGE[g] || FARGE.Annet)[0]}"></span>`;
-const ANTALL_ORD = ["null", "ett", "to", "tre", "fire", "fem", "seks", "sju", "åtte", "ni", "ti", "elleve"];
+const ANTALL_ORD = ["null", "ett", "to", "tre", "fire", "fem", "seks", "sju", "åtte", "ni", "ti", "elleve", "tolv"];
+const ord = (n) => ANTALL_ORD[n] ?? String(n);
 const stor = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const husk = { les() { try { return localStorage.getItem(HUSK); } catch { return null; } },
+  skriv(v) { try { localStorage.setItem(HUSK, v); } catch { /* privat modus: siden virker uten */ } } };
 
 const BOWL = "M15 6 L45 6 C47 22 51 38 44 51 C40 58 35 62 30 62 C25 62 20 58 16 51 C9 38 13 22 15 6 Z";
 function glass(gruppe, id) {
@@ -271,7 +321,7 @@ function glass(gruppe, id) {
     <path class="glass-outline" d="${BOWL}"/><rect class="glass-stem" x="28.75" y="61" width="2.5" height="27" rx="1"/><ellipse class="glass-stem" cx="30" cy="90" rx="13" ry="2.6"/></svg>`;
 }
 
-let data, valg = { ...STANDARD }, rekke = [], alkoholfritt = null, feil = null, fraLenke = false, maksPerType = 1;
+let data, valg = { ...STANDARD }, rekke = [], alkoholfrie = [], feil = null, fraLenke = false, maksPerType = 1;
 
 /* Lenken: valgene og varenumrene i rekka, så en delt lenke viser de samme ølene. */
 function lesLenke() {
@@ -280,21 +330,23 @@ function lesLenke() {
     const v = parseInt(p.get(navn), 10);
     return Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : standard;
   };
-  const butikk = p.get("b");
+  const gyldig = (b) => b === NETT || data.butikker.includes(b);
+  const fraLenka = p.get("b");
   valg = {
-    butikk: butikk === NETT || data.butikker.includes(butikk) ? butikk : STANDARD.butikk,
+    // Uten butikk i lenka: den man valgte sist, ellers ingen.
+    butikk: gyldig(fraLenka) ? fraLenka : gyldig(husk.les()) ? husk.les() : null,
     personer: tall("p", MIN_PERSONER, MAX_PERSONER, STANDARD.personer),
     budsjett: tall("kr", 100, 50000, STANDARD.budsjett),
     antall: tall("n", MIN_ANTALL, MAX_ANTALL, STANDARD.antall),
-    alkoholfritt: p.get("af") === "1",
+    alkoholfrie: tall("af", 0, MAX_ALKOHOLFRIE, STANDARD.alkoholfrie),
     // Typene står som plassene i rekkefølgen. Mangler de, er alle med.
     typer: !p.has("t") ? [...data.rekkefolge]
       : p.get("t").split(",").filter(Boolean).map(Number).map((i) => data.rekkefolge[i]).filter(Boolean),
   };
   const ider = (p.get("ol") || "").split(",").filter(Boolean);
-  if (ider.length) {
+  if (valg.butikk && ider.length) {
     rekke = fraVarenumre(data, valg, ider);
-    alkoholfritt = p.get("afol") ? fraVarenumre(data, valg, [p.get("afol")])[0] ?? null : null;
+    alkoholfrie = fraVarenumre(data, valg, (p.get("afol") || "").split(",").filter(Boolean));
     feil = null;
     fraLenke = true;
   } else {
@@ -303,22 +355,31 @@ function lesLenke() {
 }
 
 function skrivLenke() {
-  const p = new URLSearchParams({ b: valg.butikk, p: valg.personer, kr: valg.budsjett, n: valg.antall, af: valg.alkoholfritt ? "1" : "0" });
-  if (valg.typer.length !== data.rekkefolge.length) {
-    p.set("t", valg.typer.map((g) => data.rekkefolge.indexOf(g)).join(","));
-  }
+  const p = new URLSearchParams();
+  if (valg.butikk) p.set("b", valg.butikk);
+  p.set("p", valg.personer);
+  p.set("kr", valg.budsjett);
+  p.set("n", valg.antall);
+  p.set("af", valg.alkoholfrie);
+  if (valg.typer.length !== data.rekkefolge.length) p.set("t", valg.typer.map((g) => data.rekkefolge.indexOf(g)).join(","));
   if (rekke.length) p.set("ol", rekke.map((o) => o.id).join(","));
-  if (alkoholfritt) p.set("afol", alkoholfritt.id);
+  if (alkoholfrie.length) p.set("afol", alkoholfrie.map((o) => o.id).join(","));
   history.replaceState(null, "", "#" + p.toString());
 }
 
 function beregn() {
+  fraLenke = false;
+  if (!valg.butikk) {
+    rekke = [];
+    alkoholfrie = [];
+    feil = null;
+    return;
+  }
   const r = velg(data, valg);
   rekke = r.rekke;
-  alkoholfritt = r.alkoholfritt;
+  alkoholfrie = r.alkoholfrie;
   feil = r.feil;
   maksPerType = r.maksPerType ?? 1;
-  fraLenke = false;
 }
 
 function oppdater() {
@@ -327,38 +388,138 @@ function oppdater() {
   tegn();
 }
 
-/* Valgene */
+/* Butikksøket: et tekstfelt med en liste under, etter mønsteret for kombinasjonsboks. */
+const sok = { treff: [], aktiv: -1, avstand: null };
+const visningsnavn = (b) => (b === NETT ? NETT_TEKST : b ?? "");
+const normal = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+function finnTreff(tekst) {
+  const q = normal(tekst.trim());
+  if (!q && sok.avstand) {
+    return sok.avstand.slice(0, 5).map(({ navn, km }) => ({ verdi: navn, tekst: navn, info: `${nf1.format(km)} km` }));
+  }
+  const nett = { verdi: NETT, tekst: NETT_TEKST, info: "hjem eller til butikk" };
+  const deler = q.split(/\s+/).filter(Boolean);
+  const butikker = data.butikker
+    .filter((b) => deler.every((d) => normal(b).includes(d)))
+    .sort((a, b) => Number(!normal(a).startsWith(q)) - Number(!normal(b).startsWith(q)) || a.localeCompare(b, "nb"))
+    .map((b) => ({ verdi: b, tekst: b, info: "" }));
+  const medNett = !q || normal(NETT_TEKST).includes(q) || "nett".includes(q);
+  return medNett ? [nett, ...butikker] : butikker;
+}
+
+function visListe(tekst) {
+  sok.treff = finnTreff(tekst);
+  sok.aktiv = sok.treff.length ? 0 : -1;
+  const liste = $("butikk-liste");
+  liste.innerHTML = sok.treff.length
+    ? sok.treff.map((t, i) => `<li role="option" id="bt-${i}" data-i="${i}" aria-selected="${i === sok.aktiv}">
+        <span>${esc(t.tekst)}</span>${t.info ? `<span class="info">${esc(t.info)}</span>` : ""}</li>`).join("")
+    : `<li class="ingen" role="option" aria-disabled="true">Fant ingen butikk. Prøv byen eller en del av navnet.</li>`;
+  liste.hidden = false;
+  $("butikk").setAttribute("aria-expanded", "true");
+  merkAktiv();
+}
+function merkAktiv() {
+  const liste = $("butikk-liste");
+  for (const li of liste.querySelectorAll("li[data-i]")) li.setAttribute("aria-selected", String(Number(li.dataset.i) === sok.aktiv));
+  const aktiv = liste.querySelector(`#bt-${sok.aktiv}`);
+  if (aktiv) {
+    $("butikk").setAttribute("aria-activedescendant", aktiv.id);
+    aktiv.scrollIntoView({ block: "nearest" });
+  } else {
+    $("butikk").removeAttribute("aria-activedescendant");
+  }
+}
+function lukkListe() {
+  $("butikk-liste").hidden = true;
+  $("butikk").setAttribute("aria-expanded", "false");
+  $("butikk").removeAttribute("aria-activedescendant");
+}
+function velgButikk(verdi) {
+  valg.butikk = verdi;
+  husk.skriv(verdi);
+  $("butikk").value = visningsnavn(verdi);
+  lukkListe();
+  oppdater();
+}
+
+$("butikk").addEventListener("focus", () => { $("butikk").select(); visListe(""); });
+$("butikk").addEventListener("input", () => visListe($("butikk").value));
+$("butikk").addEventListener("keydown", (e) => {
+  const apen = !$("butikk-liste").hidden;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    if (!apen) return visListe($("butikk").value);
+    if (!sok.treff.length) return;
+    sok.aktiv = (sok.aktiv + (e.key === "ArrowDown" ? 1 : -1) + sok.treff.length) % sok.treff.length;
+    merkAktiv();
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    if (apen && sok.treff[sok.aktiv]) velgButikk(sok.treff[sok.aktiv].verdi);
+  } else if (e.key === "Escape") {
+    $("butikk").value = visningsnavn(valg.butikk);
+    lukkListe();
+  }
+});
+$("butikk").addEventListener("blur", () => {
+  // Et trykk i lista kommer etter blur, så lista lukkes litt senere.
+  setTimeout(() => { lukkListe(); $("butikk").value = visningsnavn(valg.butikk); }, 150);
+});
+$("butikk-liste").addEventListener("mousedown", (e) => e.preventDefault());
+$("butikk-liste").addEventListener("click", (e) => {
+  const li = e.target.closest("li[data-i]");
+  if (li) velgButikk(sok.treff[Number(li.dataset.i)].verdi);
+});
+
+function km(a, b) {
+  const rad = (x) => (x * Math.PI) / 180;
+  const dLat = rad(b[0] - a[0]), dLon = rad(b[1] - a[1]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLon / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+}
+$("naermest").addEventListener("click", () => {
+  const hjelp = $("butikk-hjelp");
+  hjelp.classList.remove("feil");
+  if (!navigator.geolocation) {
+    hjelp.textContent = "Nettleseren kan ikke dele posisjonen. Søk på byen i stedet.";
+    return;
+  }
+  hjelp.textContent = "Finner posisjonen din …";
+  navigator.geolocation.getCurrentPosition((pos) => {
+    const her = [pos.coords.latitude, pos.coords.longitude];
+    sok.avstand = data.butikker
+      .map((navn, i) => ({ navn, km: data.posisjon?.[i] ? km(her, data.posisjon[i]) : Infinity }))
+      .sort((a, b) => a.km - b.km);
+    hjelp.textContent = "De fem nærmeste. Posisjonen din blir på denne enheten.";
+    $("butikk").value = "";
+    $("butikk").focus();
+    visListe("");
+  }, () => {
+    hjelp.textContent = "Fikk ikke posisjonen din. Søk på byen i stedet.";
+    hjelp.classList.add("feil");
+  }, { timeout: 10000, maximumAge: 600000 });
+});
+
+/* De andre valgene */
 function fyllValg() {
-  $("butikker").innerHTML = [NETT_TEKST, ...data.butikker].map((b) => `<option value="${esc(b)}"></option>`).join("");
   $("antall").innerHTML = Array.from({ length: MAX_ANTALL - MIN_ANTALL + 1 }, (_, i) => MIN_ANTALL + i)
     .map((n) => `<option value="${n}">${n} øl</option>`).join("");
+  $("alkoholfrie").innerHTML = Array.from({ length: MAX_ALKOHOLFRIE + 1 }, (_, n) => `<option value="${n}">${n === 0 ? "Ingen" : n === 1 ? "1 alkoholfritt" : `${n} alkoholfrie`}</option>`).join("");
   $("typer").innerHTML = data.rekkefolge.map((g) => `<label><input type="checkbox" value="${esc(g)}">${dot(g)}${esc(g)}</label>`).join("");
 }
 function visValg() {
-  $("butikk").value = valg.butikk === NETT ? NETT_TEKST : valg.butikk;
+  if (document.activeElement !== $("butikk")) $("butikk").value = visningsnavn(valg.butikk);
   $("personer").textContent = `${valg.personer} personer`;
   $("minus").disabled = valg.personer <= MIN_PERSONER;
   $("pluss").disabled = valg.personer >= MAX_PERSONER;
   $("budsjett").value = valg.budsjett;
   $("antall").value = String(valg.antall);
-  $("alkoholfritt").checked = valg.alkoholfritt;
+  $("alkoholfrie").value = String(valg.alkoholfrie);
   for (const boks of $("typer").querySelectorAll("input")) boks.checked = valg.typer.includes(boks.value);
+  $("alle-typer").textContent = valg.typer.length === data.rekkefolge.length ? "Fjern alle" : "Velg alle";
 }
 $("valg").addEventListener("submit", (e) => e.preventDefault());
-$("butikk").addEventListener("change", () => {
-  const v = $("butikk").value.trim();
-  const hjelp = $("butikk-hjelp");
-  const treff = v === NETT_TEKST ? NETT : data.butikker.find((b) => b.toLowerCase() === v.toLowerCase());
-  if (!treff) {
-    hjelp.textContent = "Fant ikke butikken. Velg et navn fra lista.";
-    hjelp.classList.add("feil");
-    return;
-  }
-  hjelp.textContent = "Skriv for å søke, eller velg «Bestill på nett».";
-  hjelp.classList.remove("feil");
-  valg.butikk = treff;
-  oppdater();
-});
 $("minus").addEventListener("click", () => { if (valg.personer > MIN_PERSONER) { valg.personer--; oppdater(); } });
 $("pluss").addEventListener("click", () => { if (valg.personer < MAX_PERSONER) { valg.personer++; oppdater(); } });
 $("budsjett").addEventListener("change", () => {
@@ -368,24 +529,24 @@ $("budsjett").addEventListener("change", () => {
   oppdater();
 });
 $("antall").addEventListener("change", () => { valg.antall = parseInt($("antall").value, 10); oppdater(); });
-$("alkoholfritt").addEventListener("change", () => { valg.alkoholfritt = $("alkoholfritt").checked; oppdater(); });
+$("alkoholfrie").addEventListener("change", () => { valg.alkoholfrie = parseInt($("alkoholfrie").value, 10); oppdater(); });
 $("typer").addEventListener("change", () => {
   valg.typer = [...$("typer").querySelectorAll("input:checked")].map((b) => b.value);
   oppdater();
 });
-$("alle-typer").addEventListener("click", () => { valg.typer = [...data.rekkefolge]; oppdater(); });
+$("alle-typer").addEventListener("click", () => {
+  valg.typer = valg.typer.length === data.rekkefolge.length ? [] : [...data.rekkefolge];
+  oppdater();
+});
 $("ny-rekke").addEventListener("click", oppdater);
 
 /* Rekka */
-const alleIRekka = () => (alkoholfritt ? [...rekke, alkoholfritt] : rekke);
+const alleIRekka = () => [...rekke, ...alkoholfrie];
 function lagerTekst(o) {
   if (valg.butikk === NETT) return o.nett ? "kan bestilles på nett" : "kan ikke bestilles på nett";
   return `${nf0.format(paLager(data, o, valg.butikk))} på lager`;
 }
-function scoreTekst(o) {
-  if (o.score == null) return "ingen score ennå";
-  return `Untappd ${nf2.format(o.score)}`;
-}
+const scoreTekst = (o) => (o.score == null ? "ingen score ennå" : `Untappd ${nf2.format(o.score)}`);
 function innsjekkTekst(o) {
   const n = `${nf0.format(o.innsjekker)} innsjekker`;
   return o.innsjekker < USIKKER ? `${n}, usikker` : n;
@@ -396,8 +557,8 @@ function skjenkTekst(o) {
 }
 
 function olAvsnitt(o, nr, plass) {
-  const alt = plass == null ? [] : bytter(data, valg, rekke, alkoholfritt, plass);
-  return `<article class="pick" id="${nr ? `ol-${nr}` : "ol-alkoholfritt"}">
+  const alt = plass == null ? [] : bytter(data, valg, rekke, alkoholfrie, plass);
+  return `<article class="pick" id="${nr ? `ol-${nr}` : `alkoholfri-${esc(o.id)}`}">
     <div class="pick-glass">${nr ? `<span class="n">${nr}</span>` : ""}${glass(o.gruppe, "p" + o.id)}</div>
     <div class="pick-body">
       <h3 tabindex="-1">${esc(o.navn)}</h3>
@@ -409,7 +570,7 @@ function olAvsnitt(o, nr, plass) {
       </div>
       <div class="handlinger">
         ${o.polet ? `<a href="${esc(o.polet)}" target="_blank" rel="noopener">Se varen hos Polet</a>` : ""}
-        ${o.untappd ?`<a href="${esc(o.untappd)}" target="_blank" rel="noopener">Se på Untappd</a>` : ""}
+        ${o.untappd ? `<a href="${esc(o.untappd)}" target="_blank" rel="noopener">Se på Untappd</a>` : ""}
       </div>
       ${alt.length ? `<details class="bytt"><summary>Bytt ut</summary><div class="alternativer">${alt.map((a) => `
         <button type="button" data-plass="${plass}" data-id="${esc(a.id)}">
@@ -424,7 +585,7 @@ $("picks").addEventListener("click", (e) => {
   const knapp = e.target.closest("button[data-plass]");
   if (!knapp) return;
   const plass = Number(knapp.dataset.plass);
-  const ny = bytter(data, valg, rekke, alkoholfritt, plass).find((o) => o.id === knapp.dataset.id);
+  const ny = bytter(data, valg, rekke, alkoholfrie, plass).find((o) => o.id === knapp.dataset.id);
   if (!ny) return;
   rekke = rekke.map((o, i) => (i === plass ? ny : o));
   skrivLenke();
@@ -432,23 +593,34 @@ $("picks").addEventListener("click", (e) => {
   document.querySelector(`#ol-${plass + 1} h3`)?.focus();
 });
 
+function statusTekst(totalt) {
+  if (feil) return feil;
+  const sted = valg.butikk === NETT ? "på nett" : `i ${valg.butikk}`;
+  let t = `${stor(ord(rekke.length))} øl ${sted} for ${kr(totalt)}, til ${valg.personer} personer.`;
+  if (maksPerType > 1 && !fraLenke) t += ` Opptil ${ord(maksPerType)} av hver type.`;
+  if (alkoholfrie.length) t += alkoholfrie.length === 1 ? " Ett alkoholfritt i tillegg." : ` ${stor(ord(alkoholfrie.length))} alkoholfrie i tillegg.`;
+  if (valg.alkoholfrie > alkoholfrie.length && !fraLenke) {
+    t += alkoholfrie.length ? ` Fant ikke flere alkoholfrie som passer.` : " Fant ikke noe alkoholfritt juleøl som passer.";
+  }
+  return t;
+}
+
 function tegn() {
   visValg();
-  const sted = valg.butikk === NETT ? "på nett" : `i ${valg.butikk}`;
-  const totalt = alleIRekka().reduce((s, o) => s + o.flasker * o.pris, 0);
+  const harButikk = Boolean(valg.butikk);
+  $("tom").hidden = harButikk;
+  $("status").hidden = !harButikk;
+  $("hylla").hidden = !harButikk;
+  const alle = alleIRekka();
+  const totalt = alle.reduce((s, o) => s + o.flasker * o.pris, 0);
   $("status").classList.toggle("feil", Boolean(feil));
-  $("status").textContent = feil
-    ? feil
-    : `${stor(ANTALL_ORD[rekke.length] ?? String(rekke.length))} øl ${sted} for ${kr(totalt)}, til ${valg.personer} personer.` +
-      (maksPerType > 1 && !fraLenke ? ` Opptil ${ANTALL_ORD[maksPerType] ?? maksPerType} av hver type.` : "") +
-      (valg.alkoholfritt && !alkoholfritt ? " Fant ikke noe alkoholfritt juleøl som passer." : "");
+  $("status").textContent = harButikk ? statusTekst(totalt) : "";
   $("lenkeinfo").hidden = !fraLenke;
 
   $("lineup").style.setProperty("--antall", Math.max(rekke.length, 1));
   $("lineup").innerHTML = rekke.map((o, i) => `<a href="#ol-${i + 1}" data-hopp="ol-${i + 1}">${glass(o.gruppe, "l" + o.id)}
     <span class="n">${i + 1}</span><span class="lbl">${esc(o.gruppe)}</span></a>`).join("");
 
-  const alle = alleIRekka();
   const flasker = alle.reduce((s, o) => s + o.flasker, 0);
   const cl = alle.reduce((s, o) => s + (o.flasker * o.cl) / valg.personer, 0);
   const gram = alle.reduce((s, o) => s + o.flasker * o.cl * 10 * (o.alkohol / 100) * 0.789, 0);
@@ -461,14 +633,14 @@ function tegn() {
   ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("") : "";
 
   $("picks").innerHTML = rekke.map((o, i) => olAvsnitt(o, i + 1, i)).join("");
-  $("alkoholfritt-ol").innerHTML = alkoholfritt
-    ? `<h3 style="margin-top:24px">Alkoholfritt</h3><div class="picks">${olAvsnitt(alkoholfritt, null, null)}</div>` : "";
+  $("alkoholfrie-ol").innerHTML = alkoholfrie.length
+    ? `<h3 style="margin-top:24px">Alkoholfritt</h3><div class="picks">${alkoholfrie.map((o) => olAvsnitt(o, null, null)).join("")}</div>` : "";
 
   $("handleliste").hidden = rekke.length === 0;
   $("handle-liste").innerHTML = alle.map((o) => `<li>${o.flasker} × ${esc(o.navn)} <span class="hjelp">(varenr. ${esc(o.id)})</span>, ${kr(o.flasker * o.pris)}</li>`).join("");
   $("handle-sum").textContent = `Til sammen ${kr(totalt)}`;
   $("kopistatus").textContent = "";
-  tegnHylla();
+  if (harButikk) tegnHylla();
 }
 
 $("lineup").addEventListener("click", (e) => {
@@ -491,8 +663,9 @@ async function kopier(tekst, melding) {
 }
 $("kopier-liste").addEventListener("click", () => {
   const sted = valg.butikk === NETT ? "bestilles på nett" : valg.butikk;
-  const linjer = alleIRekka().map((o) => `${o.flasker} × ${o.navn} (varenr. ${o.id}), ${kr(o.flasker * o.pris)}`);
-  const totalt = alleIRekka().reduce((s, o) => s + o.flasker * o.pris, 0);
+  const alle = alleIRekka();
+  const linjer = alle.map((o) => `${o.flasker} × ${o.navn} (varenr. ${o.id}), ${kr(o.flasker * o.pris)}`);
+  const totalt = alle.reduce((s, o) => s + o.flasker * o.pris, 0);
   kopier([`Juleølsmaking for ${valg.personer} personer, ${sted}`, ...linjer, `Til sammen ${kr(totalt)}`, location.href].join("\n"), "Handlelista er kopiert.");
 });
 $("kopier-lenke").addEventListener("click", () => kopier(location.href, "Lenken er kopiert."));
@@ -505,7 +678,7 @@ function hylla() {
 function tegnHylla() {
   const ol = hylla();
   const sted = valg.butikk === NETT ? "kan bestilles på nett" : `står på hylla i ${valg.butikk}`;
-  $("hylla-intro").textContent = `${nf0.format(ol.length)} av årets ${nf0.format(data.ol.length)} juleøl ${sted}. Grå score betyr under ${USIKKER} innsjekker.`;
+  $("hylla-intro").textContent = `${nf0.format(ol.length)} av årets ${nf0.format(data.ol.length)} juleøl og mjøder ${sted}. Grå score betyr under ${USIKKER} innsjekker.`;
   const teller = {};
   for (const o of ol) teller[o.gruppe] = (teller[o.gruppe] || 0) + 1;
   const grupper = ["Alle", ...data.rekkefolge, ALKOHOLFRITT, "Annet"].filter((g) => g === "Alle" || teller[g]);
@@ -553,10 +726,50 @@ function tegnBunntekst() {
   $("footer").innerHTML = `
     <p>Dataene kommer fra <a href="${esc(data.kilde)}/juleol/">Ølmonopolet</a>, som henter lager og priser fra Vinmonopolet og score fra Untappd. De ble hentet ${esc(tid)}. Lageret oppdateres én gang i døgnet, så sjekk varen hos Polet før du drar.</p>
     <p>Scoren er snittet på Untappd, fra 0 til 5. Når rekka velges, trekkes øl med få innsjekker mot snittet i smaksgruppa. Mengdene regner med omtrent 7 cl per øl og person, og 5 cl av øl og mjød på 10 % eller mer. En alkoholenhet er omtrent 12 gram ren alkohol.</p>
-    <p>Et hobbyprosjekt uten tilknytning til Vinmonopolet, Ølmonopolet eller Untappd, og uten reklame.</p>`;
+    <p>Et hobbyprosjekt uten tilknytning til Vinmonopolet, Ølmonopolet eller Untappd, og uten reklame.</p>
+    <p class="hilsen">God jul, og drikk med måte.</p>`;
+}
+
+/* Snø i julehodet. Står stille når enheten ber om mindre bevegelse, og stopper når hodet er ute av syne. */
+function sno() {
+  const c = $("sno"), ctx = c.getContext("2d");
+  if (!ctx) return;
+  let w = 0, h = 0, fnugg = [], synlig = true, kjorer = false;
+  const lag = () => {
+    const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+    w = r.width; h = r.height;
+    c.width = Math.round(w * d); c.height = Math.round(h * d);
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    fnugg = Array.from({ length: Math.round(w / 12) }, () => ({
+      x: Math.random() * w, y: Math.random() * h, r: 0.7 + Math.random() * 1.9, v: 0.15 + Math.random() * 0.45, s: Math.random() * 6.28,
+    }));
+  };
+  const tegnFnugg = () => {
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+    for (const f of fnugg) { ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.2832); ctx.fill(); }
+  };
+  const steg = () => {
+    if (!synlig) { kjorer = false; return; }
+    for (const f of fnugg) {
+      f.y += f.v; f.s += 0.012; f.x += Math.sin(f.s) * 0.25;
+      if (f.y > h + 3) { f.y = -3; f.x = Math.random() * w; }
+    }
+    tegnFnugg();
+    requestAnimationFrame(steg);
+  };
+  lag();
+  tegnFnugg();
+  addEventListener("resize", () => { lag(); tegnFnugg(); });
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  new IntersectionObserver(([e]) => {
+    synlig = e.isIntersecting;
+    if (synlig && !kjorer) { kjorer = true; requestAnimationFrame(steg); }
+  }).observe(c);
 }
 
 async function start() {
+  sno();
   try {
     const svar = await fetch("data/juleol.json", { cache: "no-cache" });
     if (!svar.ok) throw new Error(svar.status);

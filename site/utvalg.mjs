@@ -145,42 +145,70 @@ function besteSett(grupper, n, budsjett, maks) {
   return rekke;
 }
 
-// valg: { butikk: butikknavn eller NETT, personer, budsjett, antall, alkoholfritt, typer }
+// valg: { butikk: butikknavn eller NETT, personer, budsjett, antall, alkoholfrie, typer }
 // typer er navnene på smaksgruppene som skal være med. Mangler den, er alle med.
+// alkoholfrie er et antall. Gamle lenker har alkoholfritt: true, som betyr ett.
 export function velg(data, valg) {
   const alle = kandidater(data, valg);
-  let budsjett = Math.floor(valg.budsjett);
-  let alkoholfritt = null;
-  if (valg.alkoholfritt) {
-    alkoholfritt = alle.filter((o) => o.gruppe === ALKOHOLFRITT && o.kostnad <= budsjett).sort(etterScore)[0] ?? null;
-    if (alkoholfritt) budsjett -= alkoholfritt.kostnad;
+  const budsjett = Math.floor(valg.budsjett);
+  const onsket = valg.alkoholfrie ?? (valg.alkoholfritt ? 1 : 0);
+  const af = alle.filter((o) => o.gruppe === ALKOHOLFRITT);
+  const etterKostnad = [...af].sort((a, b) => a.kostnad - b.kostnad);
+  const besteSomPasser = (k) => {
+    const ut = [];
+    let igjen = budsjett;
+    for (const o of [...af].sort(etterScore)) {
+      if (ut.length < k && o.kostnad <= igjen) {
+        ut.push(o);
+        igjen -= o.kostnad;
+      }
+    }
+    return ut;
+  };
+  // De beste alkoholfrie først. Går ikke rekka opp da, prøves billigere alkoholfrie, og så færre.
+  const forsok = [];
+  for (let k = Math.min(onsket, af.length); k >= 0; k--) forsok.push(besteSomPasser(k), etterKostnad.slice(0, k));
+  let forste = null;
+  for (const alkoholfrie of forsok) {
+    const kost = sum(alkoholfrie, (o) => o.kostnad);
+    if (kost > budsjett) continue;
+    const r = { ...rekkeFor(data, valg, alle, budsjett - kost), alkoholfrie };
+    if (!r.feil) return r;
+    if (r.minstBudsjett != null) r.minstBudsjett += kost;
+    forste ??= r;
+    // Feil som ikke handler om budsjettet, blir ikke bedre av andre alkoholfrie.
+    if (r.minstBudsjett == null) return r;
   }
+  if (forste?.minstBudsjett != null) {
+    forste.feil = `Budsjettet holder ikke til ${valg.antall} øl. Det trengs minst ${forste.minstBudsjett} kr, eller færre øl.`;
+  }
+  return forste;
+}
+
+// Den beste rekka for typene, antallet og budsjettet, uten de alkoholfrie.
+function rekkeFor(data, valg, alle, budsjett) {
   const typer = valg.typer ? data.rekkefolge.filter((g) => valg.typer.includes(g)) : data.rekkefolge;
-  if (typer.length === 0) return { rekke: [], alkoholfritt, feil: "Velg minst én type." };
+  if (typer.length === 0) return { rekke: [], feil: "Velg minst én type." };
   const lister = typer.map((g) => alle.filter((o) => o.gruppe === g)).filter((l) => l.length > 0);
   const n = valg.antall;
   const finnes = sum(lister, (l) => l.length);
   if (n > finnes) {
-    return { rekke: [], alkoholfritt, maksAntall: finnes,
+    return { rekke: [], maksAntall: finnes,
       feil: `Bare ${finnes} øl av disse typene passer her. Velg ${finnes} øl eller færre, eller flere typer.` };
   }
   const maks = maksPerGruppe(lister, n);
   const grupper = lister.map((l) => utenDominerte(l, maks));
   const billigst = sum(grupper.flatMap((l) => l.slice(0, maks).map((o) => o.kostnad)).sort((a, b) => a - b).slice(0, n), (x) => x);
   const rekke = billigst <= budsjett ? besteSett(grupper, n, budsjett, maks) : null;
-  if (!rekke) {
-    const trengs = billigst + (alkoholfritt?.kostnad ?? 0);
-    return { rekke: [], alkoholfritt, minstBudsjett: trengs,
-      feil: `Budsjettet holder ikke til ${n} øl. Det trengs minst ${trengs} kr, eller færre øl.` };
-  }
+  if (!rekke) return { rekke: [], minstBudsjett: billigst, feil: "budsjett" };
   rekke.sort((a, b) => data.rekkefolge.indexOf(a.gruppe) - data.rekkefolge.indexOf(b.gruppe) || a.alkohol - b.alkohol);
-  return { rekke, alkoholfritt, maksPerType: maks, feil: null };
+  return { rekke, maksPerType: maks, feil: null };
 }
 
 // De beste andre ølene fra samme gruppe som holder budsjettet når de byttes inn på denne plassen.
-export function bytter(data, valg, rekke, alkoholfritt, plass, maks = 3) {
+export function bytter(data, valg, rekke, alkoholfrie, plass, maks = 3) {
   const naa = rekke[plass];
-  const brukt = sum(rekke, (o) => o.kostnad) + (alkoholfritt?.kostnad ?? 0);
+  const brukt = sum(rekke, (o) => o.kostnad) + sum(alkoholfrie ?? [], (o) => o.kostnad);
   const rom = Math.floor(valg.budsjett) - brukt + naa.kostnad;
   const iRekka = new Set(rekke.map((o) => o.id));
   return kandidater(data, valg)

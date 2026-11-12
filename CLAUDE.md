@@ -35,6 +35,8 @@ python3 -m http.server -d site 8000     # siden lokalt på http://localhost:8000
 - Ingen reklame for alkohol: ingen annonser, betalte lenker eller bånd til produsenter, og nøktern tekst.
   Ikke Polets navn eller logo i navnet på siden.
 - Ølmonopolet nevnes og lenkes til i bunnteksten.
+- Siden sender ingenting om brukeren noe sted: posisjonen fra «Finn nærmeste butikk» brukes bare i
+  nettleseren, og valgt butikk huskes bare i `localStorage`. Ingen eksterne fonter, skript eller sporing.
 
 ## Tasks
 

@@ -5,7 +5,10 @@ mange dere blir og hvor mye dere vil bruke. Siden plukker øl fra ulike smaksgru
 Untappd innenfor budsjettet, og setter dem i rekkefølge fra lett til tungt, med mjøden til slutt.
 
 Du kan velge hvilke typer som skal være med. Alle er valgt fra start. Velger du færre typer enn antall øl,
-kommer det flere av hver type, fordelt så jevnt som mulig.
+kommer det flere av hver type, fordelt så jevnt som mulig. Du kan også ta med opptil fire alkoholfrie øl.
+
+Butikken finner du ved å søke på by eller navn, eller med «Finn nærmeste butikk». Posisjonen din brukes bare i
+nettleseren og sendes ingen steder. Siden husker butikken du valgte sist, på den enheten.
 
 Du får:
 

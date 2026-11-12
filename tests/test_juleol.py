@@ -133,6 +133,19 @@ class Bygging(unittest.TestCase):
         lager = data["ol"][0]["lager"]
         self.assertEqual({data["butikker"][int(k)]: v for k, v in lager.items()}, {"By 7, Butikk 7": 12})
 
+    def test_posisjon_i_samme_rekkefolge_som_butikkene(self):
+        svar = svar_med()
+        svar[0]["all_stock"] = [{"store_name": "By 3, Butikk 3", "quantity": 4, "gps_lat": 63.4295741, "gps_long": 10.3935812}]
+        for o in svar[1:]:
+            for s in o["all_stock"]:
+                if s["store_name"] == "By 3, Butikk 3":
+                    s["quantity"] = 0
+        data = juleol.bygg_data(svar, "x")
+        self.assertEqual(len(data["posisjon"]), len(data["butikker"]))
+        i = data["butikker"].index("By 3, Butikk 3")
+        self.assertEqual(data["posisjon"][i], [63.42957, 10.39358])
+        self.assertIsNone(data["posisjon"][data["butikker"].index("By 4, Butikk 4")])
+
     def test_bare_kjente_lenker_slipper_gjennom(self):
         svar = svar_med()
         svar[0]["vmp_url"] = "javascript:alert(1)"

@@ -143,12 +143,19 @@ def bygg_data(resultater, hentet):
     if len(butikker) < MIN_BUTIKKER:
         raise HenteFeil(f"Bare {len(butikker)} butikker i svaret, venter minst {MIN_BUTIKKER}.")
     indeks = {navn: i for i, navn in enumerate(butikker)}
+    posisjon = {}
+    for o in ol:
+        for s in o.get("all_stock") or []:
+            if all(isinstance(s.get(k), (int, float)) for k in ("gps_lat", "gps_long")):
+                posisjon[s["store_name"]] = [round(s["gps_lat"], 5), round(s["gps_long"], 5)]
 
     return {
         "hentet": hentet,
         "kilde": "https://www.olmonopolet.app",
         "rekkefolge": REKKEFOLGE,
         "butikker": butikker,
+        # Til «Finn nærmeste butikk»: samme rekkefølge som «butikker», null der posisjonen mangler.
+        "posisjon": [posisjon.get(navn) for navn in butikker],
         "ol": [{
             "id": str(o["vmp_id"]),
             "navn": o.get("vmp_name") or "",
