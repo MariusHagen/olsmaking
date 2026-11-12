@@ -118,12 +118,12 @@ class Bygging(unittest.TestCase):
         with self.assertRaisesRegex(juleol.HenteFeil, "juleøl"):
             juleol.bygg_data([], "x")
 
-    def test_mjod_og_sider_holdes_utenfor(self):
-        svar = svar_med() + [ol(900, ["By 1, Butikk 1"], kategori="Mjød"),
+    def test_mjod_er_med_og_sider_holdes_utenfor(self):
+        svar = svar_med() + [ol(900, ["By 1, Butikk 1"], kategori="Mjød", stil="Mead - Melomel"),
                              ol(901, ["By 1, Butikk 1"], kategori="Sider")]
-        ider = {o["id"] for o in juleol.bygg_data(svar, "x")["ol"]}
-        self.assertNotIn("900", ider)
-        self.assertNotIn("901", ider)
+        grupper = {o["id"]: o["gruppe"] for o in juleol.bygg_data(svar, "x")["ol"]}
+        self.assertEqual(grupper.get("900"), "Mjød")
+        self.assertNotIn("901", grupper)
 
     def test_lageret_peker_pa_riktig_butikk(self):
         svar = svar_med()

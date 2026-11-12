@@ -62,6 +62,15 @@ header, .section { display: grid; gap: 16px; }
 .stepper output { min-width: 5.5rem; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
 .avkryss { display: flex; gap: 10px; align-items: center; font-size: .95rem; padding-top: 4px; }
 .avkryss input { width: 20px; height: 20px; accent-color: var(--accent); }
+.typer { grid-column: 1 / -1; border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 8px; }
+.typer legend { padding: 0; margin-bottom: 8px; font-size: .85rem; font-weight: 600; }
+.typer-liste { display: flex; flex-wrap: wrap; gap: 8px; }
+.typer-liste label { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px 6px 10px; font-size: .88rem; cursor: pointer; background: var(--bg); }
+.typer-liste label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.typer-liste input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.typer-under { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.typer-under .hjelp { font-size: .8rem; color: var(--muted); }
+.lenkeknapp { appearance: none; background: none; border: 0; padding: 0; color: var(--accent); font: 600 .85rem var(--body); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
 /* Status og glassrekka */
 .status { font-size: 1rem; }
@@ -144,7 +153,7 @@ footer { font-size: .88rem; color: var(--muted); display: grid; gap: 8px; max-wi
 <body>
 <div class="wrap">
   <header>
-    <p class="eyebrow">Juleøl fra Vinmonopolet</p>
+    <p class="eyebrow">Juleøl og julemjød fra Vinmonopolet</p>
     <h1>Sett sammen en juleølsmaking</h1>
     <p class="lead">Velg butikk, hvor mange dere blir og hvor mye dere vil bruke. Siden plukker øl fra ulike smaksgrupper, med best mulig score på Untappd innenfor budsjettet, og setter dem i rekkefølge fra lett til tungt.</p>
   </header>
@@ -173,6 +182,14 @@ footer { font-size: .88rem; color: var(--muted); display: grid; gap: 8px; max-wi
       <select id="antall"></select>
       <label class="avkryss"><input type="checkbox" id="alkoholfritt"> Ta med ett alkoholfritt</label>
     </div>
+    <fieldset class="typer">
+      <legend>Typer</legend>
+      <div class="typer-liste" id="typer"></div>
+      <div class="typer-under">
+        <button type="button" class="lenkeknapp" id="alle-typer">Velg alle</button>
+        <span class="hjelp">Velger du færre typer enn øl, kommer det flere av hver type.</span>
+      </div>
+    </fieldset>
   </form>
 
   <section class="section" aria-labelledby="rekka-h">
@@ -232,7 +249,8 @@ const FARGE = {
   "Alkoholfritt": ["#BFD9C8", "#FBF5E6"], "Surt og fruktig": ["#C8415E", "#F4D6DD"], "Lys og frisk": ["#EBCF6A", "#FBF5E6"],
   "Gårdsøl og saison": ["#DDA33A", "#FBF5E6"], "Humle og IPA": ["#EEA33F", "#FBF5E6"], "Klassisk juleøl": ["#7A3415", "#EAD9BF"],
   "Bokk": ["#55260F", "#E6D3B5"], "Juleale og krydret": ["#8E2F1E", "#E9D6B8"], "Belgisk": ["#A8571E", "#EFDDBF"],
-  "Sterk og fyldig": ["#6B3A14", "#E8D2AE"], "Porter og stout": ["#1A110D", "#C9A27A"], "Annet": ["#8C9A92", "#F1F1EC"],
+  "Sterk og fyldig": ["#6B3A14", "#E8D2AE"], "Porter og stout": ["#1A110D", "#C9A27A"], "Mjød": ["#D9A441", "#F7EBC8"],
+  "Annet": ["#8C9A92", "#F1F1EC"],
 };
 
 const nf2 = new Intl.NumberFormat("nb-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -253,7 +271,7 @@ function glass(gruppe, id) {
     <path class="glass-outline" d="${BOWL}"/><rect class="glass-stem" x="28.75" y="61" width="2.5" height="27" rx="1"/><ellipse class="glass-stem" cx="30" cy="90" rx="13" ry="2.6"/></svg>`;
 }
 
-let data, valg = { ...STANDARD }, rekke = [], alkoholfritt = null, feil = null, fraLenke = false;
+let data, valg = { ...STANDARD }, rekke = [], alkoholfritt = null, feil = null, fraLenke = false, maksPerType = 1;
 
 /* Lenken: valgene og varenumrene i rekka, så en delt lenke viser de samme ølene. */
 function lesLenke() {
@@ -269,6 +287,9 @@ function lesLenke() {
     budsjett: tall("kr", 100, 50000, STANDARD.budsjett),
     antall: tall("n", MIN_ANTALL, MAX_ANTALL, STANDARD.antall),
     alkoholfritt: p.get("af") === "1",
+    // Typene står som plassene i rekkefølgen. Mangler de, er alle med.
+    typer: !p.has("t") ? [...data.rekkefolge]
+      : p.get("t").split(",").filter(Boolean).map(Number).map((i) => data.rekkefolge[i]).filter(Boolean),
   };
   const ider = (p.get("ol") || "").split(",").filter(Boolean);
   if (ider.length) {
@@ -283,6 +304,9 @@ function lesLenke() {
 
 function skrivLenke() {
   const p = new URLSearchParams({ b: valg.butikk, p: valg.personer, kr: valg.budsjett, n: valg.antall, af: valg.alkoholfritt ? "1" : "0" });
+  if (valg.typer.length !== data.rekkefolge.length) {
+    p.set("t", valg.typer.map((g) => data.rekkefolge.indexOf(g)).join(","));
+  }
   if (rekke.length) p.set("ol", rekke.map((o) => o.id).join(","));
   if (alkoholfritt) p.set("afol", alkoholfritt.id);
   history.replaceState(null, "", "#" + p.toString());
@@ -293,6 +317,7 @@ function beregn() {
   rekke = r.rekke;
   alkoholfritt = r.alkoholfritt;
   feil = r.feil;
+  maksPerType = r.maksPerType ?? 1;
   fraLenke = false;
 }
 
@@ -307,6 +332,7 @@ function fyllValg() {
   $("butikker").innerHTML = [NETT_TEKST, ...data.butikker].map((b) => `<option value="${esc(b)}"></option>`).join("");
   $("antall").innerHTML = Array.from({ length: MAX_ANTALL - MIN_ANTALL + 1 }, (_, i) => MIN_ANTALL + i)
     .map((n) => `<option value="${n}">${n} øl</option>`).join("");
+  $("typer").innerHTML = data.rekkefolge.map((g) => `<label><input type="checkbox" value="${esc(g)}">${dot(g)}${esc(g)}</label>`).join("");
 }
 function visValg() {
   $("butikk").value = valg.butikk === NETT ? NETT_TEKST : valg.butikk;
@@ -316,6 +342,7 @@ function visValg() {
   $("budsjett").value = valg.budsjett;
   $("antall").value = String(valg.antall);
   $("alkoholfritt").checked = valg.alkoholfritt;
+  for (const boks of $("typer").querySelectorAll("input")) boks.checked = valg.typer.includes(boks.value);
 }
 $("valg").addEventListener("submit", (e) => e.preventDefault());
 $("butikk").addEventListener("change", () => {
@@ -342,6 +369,11 @@ $("budsjett").addEventListener("change", () => {
 });
 $("antall").addEventListener("change", () => { valg.antall = parseInt($("antall").value, 10); oppdater(); });
 $("alkoholfritt").addEventListener("change", () => { valg.alkoholfritt = $("alkoholfritt").checked; oppdater(); });
+$("typer").addEventListener("change", () => {
+  valg.typer = [...$("typer").querySelectorAll("input:checked")].map((b) => b.value);
+  oppdater();
+});
+$("alle-typer").addEventListener("click", () => { valg.typer = [...data.rekkefolge]; oppdater(); });
 $("ny-rekke").addEventListener("click", oppdater);
 
 /* Rekka */
@@ -408,6 +440,7 @@ function tegn() {
   $("status").textContent = feil
     ? feil
     : `${stor(ANTALL_ORD[rekke.length] ?? String(rekke.length))} øl ${sted} for ${kr(totalt)}, til ${valg.personer} personer.` +
+      (maksPerType > 1 && !fraLenke ? ` Opptil ${ANTALL_ORD[maksPerType] ?? maksPerType} av hver type.` : "") +
       (valg.alkoholfritt && !alkoholfritt ? " Fant ikke noe alkoholfritt juleøl som passer." : "");
   $("lenkeinfo").hidden = !fraLenke;
 
@@ -519,7 +552,7 @@ function tegnBunntekst() {
     .format(new Date(data.hentet)).replace(":", ".");
   $("footer").innerHTML = `
     <p>Dataene kommer fra <a href="${esc(data.kilde)}/juleol/">Ølmonopolet</a>, som henter lager og priser fra Vinmonopolet og score fra Untappd. De ble hentet ${esc(tid)}. Lageret oppdateres én gang i døgnet, så sjekk varen hos Polet før du drar.</p>
-    <p>Scoren er snittet på Untappd, fra 0 til 5. Når rekka velges, trekkes øl med få innsjekker mot snittet i smaksgruppa. Mengdene regner med omtrent 7 cl per øl og person, og 5 cl av øl på 10 % eller mer. En alkoholenhet er omtrent 12 gram ren alkohol.</p>
+    <p>Scoren er snittet på Untappd, fra 0 til 5. Når rekka velges, trekkes øl med få innsjekker mot snittet i smaksgruppa. Mengdene regner med omtrent 7 cl per øl og person, og 5 cl av øl og mjød på 10 % eller mer. En alkoholenhet er omtrent 12 gram ren alkohol.</p>
     <p>Et hobbyprosjekt uten tilknytning til Vinmonopolet, Ølmonopolet eller Untappd, og uten reklame.</p>`;
 }
 

@@ -60,10 +60,35 @@ test("bestill på nett gir bare øl som kan bestilles på nett", () => {
   assert.ok(r.rekke.every((o) => o.nett));
 });
 
-test("for mange øl gir beskjed om hvor mange som går", () => {
-  const r = velg(data, { butikk: TORG, personer: 5, budsjett: 9000, antall: 11 });
-  assert.match(r.feil, /smaksgrupper/);
-  assert.equal(r.maksAntall, 10);
+test("for mange øl for typene gir beskjed om hvor mange som går", () => {
+  const r = velg(data, { butikk: TORG, personer: 5, budsjett: 9000, antall: 10, typer: ["Lys og frisk"] });
+  assert.match(r.feil, /av disse typene/);
+  assert.ok(r.maksAntall < 10);
+  assert.equal(velg(data, { butikk: TORG, personer: 5, budsjett: 9000, antall: 4, typer: [] }).feil, "Velg minst én type.");
+});
+
+test("bare de valgte typene er med", () => {
+  const typer = ["Belgisk", "Mjød", "Humle og IPA"];
+  const r = velg(data, { butikk: TORG, personer: 5, budsjett: 3000, antall: 6, typer });
+  assert.equal(r.rekke.length, 6);
+  assert.ok(r.rekke.every((o) => typer.includes(o.gruppe)));
+});
+
+test("færre typer enn øl gir flere per type, fordelt jevnt", () => {
+  const typer = ["Porter og stout", "Bokk"];
+  const r = velg(data, { butikk: TORG, personer: 5, budsjett: 5000, antall: 8, typer });
+  assert.equal(r.rekke.length, 8);
+  assert.equal(r.maksPerType, 4);
+  for (const g of typer) assert.equal(r.rekke.filter((o) => o.gruppe === g).length, 4, g);
+  assert.equal(new Set(r.rekke.map((o) => o.id)).size, 8, "ingen øl to ganger");
+});
+
+test("mjøden kommer sist, og innenfor en type går det fra svakt til sterkt", () => {
+  const r = velg(data, { butikk: TORG, personer: 5, budsjett: 5000, antall: 4, typer: ["Mjød", "Surt og fruktig"] });
+  assert.equal(r.rekke.at(-1).gruppe, "Mjød");
+  for (let i = 1; i < r.rekke.length; i++) {
+    if (r.rekke[i].gruppe === r.rekke[i - 1].gruppe) assert.ok(r.rekke[i].alkohol >= r.rekke[i - 1].alkohol);
+  }
 });
 
 test("bytter er fra samme gruppe, ikke allerede i rekka, og holder budsjettet", () => {
@@ -79,39 +104,70 @@ test("bytter er fra samme gruppe, ikke allerede i rekka, og holder budsjettet", 
   }
 });
 
-test("valget er det beste settet som finnes", () => {
+test("valget er det beste settet som finnes, med ett og med flere øl per type", () => {
   let frø = 7;
   const tilfeldig = () => (frø = (frø * 16807) % 2147483647) / 2147483647;
-  const grupper = data.rekkefolge.slice(0, 6);
   const syn = { butikker: ["A"], rekkefolge: data.rekkefolge, ol: [] };
   let id = 0;
-  for (const g of grupper) {
-    for (let i = 0; i < 4; i++) {
+  for (const g of data.rekkefolge.slice(0, 6)) {
+    for (let i = 0; i < 6; i++) {
       syn.ol.push({ id: String(id++), navn: "x", gruppe: g, stil: "", score: 3 + tilfeldig(),
         innsjekker: 10 + Math.floor(tilfeldig() * 1000), alkohol: 6, cl: 33, pris: 40 + Math.round(tilfeldig() * 200),
         nett: true, lager: { 0: 99 } });
     }
   }
-  for (const budsjett of [300, 500, 800, 1200, 2000]) {
-    const valg = { butikk: "A", personer: 4, budsjett, antall: 4 };
-    const r = velg(syn, valg);
-    const best = alleKombinasjoner(kandidater(syn, valg), grupper, 4, budsjett);
-    if (best === null) assert.ok(r.feil, `${budsjett} kr: ingen kombinasjon går, men utvalget fant en`);
-    else assert.ok(Math.abs(r.rekke.reduce((s, o) => s + o.justert, 0) - best) < 1e-9, `${budsjett} kr`);
+  const tilfeller = [
+    { typer: data.rekkefolge.slice(0, 6), antall: 4, maks: 1 },
+    { typer: data.rekkefolge.slice(0, 2), antall: 5, maks: 3 },
+    { typer: data.rekkefolge.slice(0, 1), antall: 4, maks: 4 },
+  ];
+  for (const { typer, antall, maks } of tilfeller) {
+    for (const budsjett of [250, 400, 600, 900, 1500]) {
+      const valg = { butikk: "A", personer: 4, budsjett, antall, typer };
+      const r = velg(syn, valg);
+      const kand = kandidater(syn, valg).filter((o) => typer.includes(o.gruppe));
+      const best = alleKombinasjoner(kand, antall, maks, budsjett);
+      const navn = `${typer.length} typer, ${antall} øl, ${budsjett} kr`;
+      if (best === null) assert.ok(r.feil, `${navn}: ingen kombinasjon går, men utvalget fant en`);
+      else assert.ok(Math.abs(r.rekke.reduce((s, o) => s + o.justert, 0) - best) < 1e-9, navn);
+    }
   }
 });
 
-function alleKombinasjoner(kand, grupper, n, budsjett) {
+test("har en type for få øl, får de andre typene flere", () => {
+  // Én type med ett øl og én med seks: fem øl gir høyst fire av den største, ikke tre.
+  const syn = { butikker: ["A"], rekkefolge: data.rekkefolge, ol: [] };
+  const [liten, stor] = data.rekkefolge;
+  syn.ol.push({ id: "0", navn: "x", gruppe: liten, stil: "", score: 4, innsjekker: 500, alkohol: 6, cl: 33, pris: 50, nett: true, lager: { 0: 99 } });
+  for (let i = 1; i <= 6; i++) {
+    syn.ol.push({ id: String(i), navn: "x", gruppe: stor, stil: "", score: 3 + i / 10, innsjekker: 500, alkohol: 6, cl: 33,
+      pris: 40 + i * 10, nett: true, lager: { 0: 99 } });
+  }
+  const valg = { butikk: "A", personer: 4, budsjett: 2000, antall: 5, typer: [liten, stor] };
+  const r = velg(syn, valg);
+  assert.equal(r.maksPerType, 4);
+  assert.equal(r.rekke.length, 5);
+  assert.equal(r.rekke.filter((o) => o.gruppe === stor).length, 4);
+  const best = alleKombinasjoner(kandidater(syn, valg), 5, 4, 2000);
+  assert.ok(Math.abs(r.rekke.reduce((s, o) => s + o.justert, 0) - best) < 1e-9);
+});
+
+// Prøver alle sett med n øl og høyst «maks» per type.
+function alleKombinasjoner(kand, n, maks, budsjett) {
   let best = null;
-  const prov = (g, valgt, kost, score) => {
+  const prov = (i, valgt, perType, kost, score) => {
+    if (kost > budsjett) return;
     if (valgt === n) {
-      if (kost <= budsjett && (best === null || score > best)) best = score;
+      if (best === null || score > best) best = score;
       return;
     }
-    if (g === grupper.length) return;
-    prov(g + 1, valgt, kost, score);
-    for (const o of kand.filter((o) => o.gruppe === grupper[g])) prov(g + 1, valgt + 1, kost + o.kostnad, score + o.justert);
+    if (i === kand.length) return;
+    prov(i + 1, valgt, perType, kost, score);
+    const o = kand[i];
+    if ((perType[o.gruppe] ?? 0) < maks) {
+      prov(i + 1, valgt + 1, { ...perType, [o.gruppe]: (perType[o.gruppe] ?? 0) + 1 }, kost + o.kostnad, score + o.justert);
+    }
   };
-  prov(0, 0, 0, 0);
+  prov(0, 0, {}, 0, 0);
   return best;
 }

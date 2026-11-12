@@ -60,60 +60,93 @@ export function kandidater(data, valg) {
     .filter((o) => o.score != null && tilgjengelig(data, o, valg.butikk));
 }
 
-// Innenfor én gruppe er et øl bare aktuelt hvis ingen billigere har like høy score.
-function pareto(liste) {
-  const ut = [];
-  let best = -Infinity;
-  for (const o of [...liste].sort((a, b) => a.kostnad - b.kostnad || b.justert - a.justert)) {
-    if (o.justert > best) {
-      ut.push(o);
-      best = o.justert;
-    }
-  }
-  return ut;
+// Et øl kan bare være med hvis færre enn «maks» andre i gruppa er minst like billige og minst like gode.
+// Lista kommer ut sortert på kostnad.
+function utenDominerte(liste, maks) {
+  const sortert = [...liste].sort((a, b) => a.kostnad - b.kostnad || b.justert - a.justert);
+  return sortert.filter((o, i) => sortert.slice(0, i).filter((x) => x.justert >= o.justert).length < maks);
 }
 
-// Det settet med nøyaktig n øl, høyst ett per gruppe, som gir høyest samlet score innenfor budsjettet.
-// Dynamisk programmering over grupper, antall og kroner: noen millioner enkle steg.
-function besteSett(grupper, n, budsjett) {
-  const B = Math.min(budsjett, sum(grupper, (l) => l[l.length - 1].kostnad));
-  const dp = Array.from({ length: n + 1 }, (_, k) => new Float64Array(B + 1).fill(k === 0 ? 0 : -Infinity));
-  const valgt = [];
-  for (let g = 0; g < grupper.length; g++) {
-    const liste = grupper[g];
-    const v = Array.from({ length: n + 1 }, () => new Int16Array(B + 1));
-    // Synkende antall, så dp[k - 1] fortsatt er fra gruppene før: høyst ett øl fra denne gruppa.
-    for (let k = Math.min(n, g + 1); k >= 1; k--) {
-      const naa = dp[k], foer = dp[k - 1];
-      for (let c = 0; c < liste.length; c++) {
-        const { kostnad, justert } = liste[c];
-        for (let b = kostnad; b <= B; b++) {
-          const t = foer[b - kostnad] + justert;
-          if (t > naa[b]) {
-            naa[b] = t;
-            v[k][b] = c + 1;
+// Høyst så mange øl per gruppe: ett når det er minst like mange grupper som øl, ellers så jevnt som mulig,
+// og litt flere der andre grupper har for få øl til å fylle sin del.
+function maksPerGruppe(lister, n) {
+  for (let maks = Math.max(1, Math.ceil(n / lister.length)); maks < n; maks++) {
+    if (sum(lister, (l) => Math.min(maks, l.length)) >= n) return maks;
+  }
+  return n;
+}
+
+// Det settet med nøyaktig n øl, høyst «maks» per gruppe, som gir høyest samlet score innenfor budsjettet.
+// Dynamisk programmering over øl, antall fra gruppa, antall i alt og kroner, med et bitsett per øl for å
+// finne tilbake til valgene. Noen millioner enkle steg.
+function besteSett(grupper, n, budsjett, maks) {
+  const dyrest = (l) => sum(l.map((o) => o.kostnad).sort((a, b) => b - a).slice(0, maks), (x) => x);
+  const B = Math.min(budsjett, sum(grupper, dyrest));
+  const R = B + 1;          // én rad per antall i alt, én kolonne per krone
+  const S = (n + 1) * R;    // tilstander for ett antall fra gruppa
+  // dp[m * R + b]: høyeste score med m øl som koster høyst b kroner.
+  let dp = new Float64Array(S).fill(-Infinity);
+  dp.fill(0, 0, R);
+  const spor = [];
+  for (const liste of grupper) {
+    const K = Math.min(maks, liste.length);
+    const lag = [dp, ...Array.from({ length: K }, () => new Float64Array(S).fill(-Infinity))];
+    const bits = [];
+    for (const o of liste) {
+      const bit = new Uint8Array(Math.ceil(((K + 1) * S) / 8));
+      // Synkende antall fra gruppa, så lag[k - 1] ennå ikke har tatt med dette ølet: hvert øl brukes høyst én gang.
+      for (let k = K; k >= 1; k--) {
+        const naa = lag[k], foer = lag[k - 1];
+        for (let m = n; m >= 1; m--) {
+          const iN = m * R, iF = (m - 1) * R - o.kostnad;
+          for (let b = B; b >= o.kostnad; b--) {
+            const t = foer[iF + b] + o.justert;
+            if (t > naa[iN + b]) {
+              naa[iN + b] = t;
+              const idx = k * S + iN + b;
+              bit[idx >> 3] |= 1 << (idx & 7);
+            }
           }
         }
       }
+      bits.push(bit);
     }
-    valgt.push(v);
+    const ny = new Float64Array(S).fill(-Infinity);
+    const kValg = new Uint8Array(S);
+    for (let k = 0; k <= K; k++) {
+      for (let i = 0; i < S; i++) {
+        if (lag[k][i] > ny[i]) {
+          ny[i] = lag[k][i];
+          kValg[i] = k;
+        }
+      }
+    }
+    spor.push({ liste, kValg, bits });
+    dp = ny;
   }
-  if (dp[n][B] === -Infinity) return null;
+  if (dp[n * R + B] === -Infinity) return null;
+
+  // Baklengs: hvor mange som kom fra hver gruppe, og innenfor gruppa det siste ølet som forbedret tilstanden.
   const rekke = [];
-  let k = n, b = B;
-  for (let g = grupper.length - 1; g >= 0 && k > 0; g--) {
-    const c = valgt[g][k][b];
-    if (c) {
-      const o = grupper[g][c - 1];
-      rekke.push(o);
-      k -= 1;
-      b -= o.kostnad;
+  let m = n, b = B;
+  for (let g = spor.length - 1; g >= 0; g--) {
+    const { liste, kValg, bits } = spor[g];
+    let k = kValg[m * R + b];
+    for (let t = liste.length - 1; t >= 0 && k > 0; t--) {
+      const idx = k * S + m * R + b;
+      if (bits[t][idx >> 3] & (1 << (idx & 7))) {
+        rekke.push(liste[t]);
+        k -= 1;
+        m -= 1;
+        b -= liste[t].kostnad;
+      }
     }
   }
-  return rekke.reverse();
+  return rekke;
 }
 
-// valg: { butikk: butikknavn eller NETT, personer, budsjett, antall, alkoholfritt }
+// valg: { butikk: butikknavn eller NETT, personer, budsjett, antall, alkoholfritt, typer }
+// typer er navnene på smaksgruppene som skal være med. Mangler den, er alle med.
 export function velg(data, valg) {
   const alle = kandidater(data, valg);
   let budsjett = Math.floor(valg.budsjett);
@@ -122,20 +155,26 @@ export function velg(data, valg) {
     alkoholfritt = alle.filter((o) => o.gruppe === ALKOHOLFRITT && o.kostnad <= budsjett).sort(etterScore)[0] ?? null;
     if (alkoholfritt) budsjett -= alkoholfritt.kostnad;
   }
-  const grupper = data.rekkefolge.map((g) => pareto(alle.filter((o) => o.gruppe === g))).filter((l) => l.length > 0);
+  const typer = valg.typer ? data.rekkefolge.filter((g) => valg.typer.includes(g)) : data.rekkefolge;
+  if (typer.length === 0) return { rekke: [], alkoholfritt, feil: "Velg minst én type." };
+  const lister = typer.map((g) => alle.filter((o) => o.gruppe === g)).filter((l) => l.length > 0);
   const n = valg.antall;
-  if (n > grupper.length) {
-    return { rekke: [], alkoholfritt, maksAntall: grupper.length,
-      feil: `Bare ${grupper.length} smaksgrupper har øl som passer her. Velg ${grupper.length} øl eller færre.` };
+  const finnes = sum(lister, (l) => l.length);
+  if (n > finnes) {
+    return { rekke: [], alkoholfritt, maksAntall: finnes,
+      feil: `Bare ${finnes} øl av disse typene passer her. Velg ${finnes} øl eller færre, eller flere typer.` };
   }
-  const billigst = sum(grupper.map((l) => l[0].kostnad).sort((a, b) => a - b).slice(0, n), (x) => x);
-  const rekke = billigst <= budsjett ? besteSett(grupper, n, budsjett) : null;
+  const maks = maksPerGruppe(lister, n);
+  const grupper = lister.map((l) => utenDominerte(l, maks));
+  const billigst = sum(grupper.flatMap((l) => l.slice(0, maks).map((o) => o.kostnad)).sort((a, b) => a - b).slice(0, n), (x) => x);
+  const rekke = billigst <= budsjett ? besteSett(grupper, n, budsjett, maks) : null;
   if (!rekke) {
     const trengs = billigst + (alkoholfritt?.kostnad ?? 0);
     return { rekke: [], alkoholfritt, minstBudsjett: trengs,
       feil: `Budsjettet holder ikke til ${n} øl. Det trengs minst ${trengs} kr, eller færre øl.` };
   }
-  return { rekke, alkoholfritt, feil: null };
+  rekke.sort((a, b) => data.rekkefolge.indexOf(a.gruppe) - data.rekkefolge.indexOf(b.gruppe) || a.alkohol - b.alkohol);
+  return { rekke, alkoholfritt, maksPerType: maks, feil: null };
 }
 
 // De beste andre ølene fra samme gruppe som holder budsjettet når de byttes inn på denne plassen.

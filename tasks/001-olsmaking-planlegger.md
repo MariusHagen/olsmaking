@@ -78,7 +78,8 @@ Untappds nettsider, ikke fra en avtale med Untappd.
 - Butikkene identifiseres med hele navnet, for eksempel «Bodø, Sentrum». API-et gir ikke butikknummeret i
   dette kallet, og fem butikker heter «Sentrum».
 - Fila får tidspunktet jobben kjørte. Kallet gir ikke tidspunktet for lageret i hver butikk.
-- Mjød og sider holdes utenfor. Alkoholfritt beholdes som egen gruppe.
+- Sider holdes utenfor. Alkoholfritt beholdes som egen gruppe. Mjød er med fra
+  [task 003](completed/003-velge-typer-og-mjod.md).
 - Jobben stopper med feil ved svar 401 eller 403, ved færre enn 100 juleøl og ved færre enn 300 butikker,
   slik at siden beholder forrige data i stedet for å bli tom eller halv. Ved 429, serverfeil eller
   tidsavbrudd prøver den én gang til etter fem minutter.

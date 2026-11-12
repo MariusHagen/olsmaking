@@ -18,7 +18,7 @@ import urllib.parse
 import urllib.request
 
 API = "https://api.olmonopolet.app"
-KATEGORIER = {"Øl", "Alkoholfritt"}  # mjød og sider hører ikke hjemme i en ølsmaking
+KATEGORIER = {"Øl", "Alkoholfritt", "Mjød"}  # sider hører ikke hjemme i en ølsmaking
 FELT = ("vmp_id,vmp_name,main_category,sub_category,style,rating,checkins,abv,vmp_abv,"
         "volume,price,post_delivery,vmp_url,untpd_url,all_stock")
 # Under dette er svaret halvt, og siden skal heller beholde gårsdagens data.
@@ -53,9 +53,10 @@ GRUPPER = [
                       "witbier", "weiss", "hveteøl", "blonde", "golden", "lys"]),
 ]
 
-# Smakerekka går fra lett til tungt i denne rekkefølgen. Alkoholfritt og «Annet» er ikke med i rekka.
+# Smakerekka går fra lett til tungt i denne rekkefølgen, med mjøden til dessert. Alkoholfritt og «Annet»
+# er ikke med i rekka.
 REKKEFOLGE = ["Surt og fruktig", "Lys og frisk", "Gårdsøl og saison", "Humle og IPA", "Klassisk juleøl",
-              "Bokk", "Juleale og krydret", "Belgisk", "Sterk og fyldig", "Porter og stout"]
+              "Bokk", "Juleale og krydret", "Belgisk", "Sterk og fyldig", "Porter og stout", "Mjød"]
 
 
 class HenteFeil(Exception):
@@ -122,8 +123,8 @@ def lenke(url, type_):
 
 
 def gruppe(o):
-    if o.get("main_category") == "Alkoholfritt":
-        return "Alkoholfritt"
+    if o.get("main_category") in ("Alkoholfritt", "Mjød"):
+        return o["main_category"]
     for tekst in (o.get("style") or "", o.get("sub_category") or ""):
         t = tekst.lower()
         for navn, nokler in GRUPPER:

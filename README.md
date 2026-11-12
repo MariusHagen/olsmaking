@@ -2,7 +2,10 @@
 
 En side som setter sammen en juleølsmaking fra Vinmonopolet. Du velger butikk eller nettbestilling, hvor
 mange dere blir og hvor mye dere vil bruke. Siden plukker øl fra ulike smaksgrupper, med best mulig score på
-Untappd innenfor budsjettet, og setter dem i rekkefølge fra lett til tungt.
+Untappd innenfor budsjettet, og setter dem i rekkefølge fra lett til tungt, med mjøden til slutt.
+
+Du kan velge hvilke typer som skal være med. Alle er valgt fra start. Velger du færre typer enn antall øl,
+kommer det flere av hver type, fordelt så jevnt som mulig.
 
 Du får:
 
