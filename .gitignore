@@ -1,0 +1,5 @@
+# Hentes hver natt av workflowen, eller lokalt med python3 juleol.py
+site/data/
+__pycache__/
+*.csv
+.DS_Store
