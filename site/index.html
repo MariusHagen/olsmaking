@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ølsmaking</title>
+<meta name="description" content="Sett sammen en juleølsmaking fra Vinmonopolet: velg butikk, antall personer og budsjett, og få øl fra ulike smaksgrupper, fra lett til tungt.">
+<style>
+/* Én smal kolonne: valgene, glassrekka, tallene, ett avsnitt per øl, handlelista og hele hylla. Bare systemfonter, så siden ikke henter noe fra andre. */
+:root {
+  --bg: #F1F4F0; --surface: #FFFFFF; --ink: #15231C; --muted: #55645C; --line: #D5DDD7;
+  --accent: #1C5842; --accent-soft: #DFEBE4; --warm: #A35E0B; --glass: #93A299; --danger: #A3302B;
+  --display: "Avenir Next", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0D1411; --surface: #141E19; --ink: #E4ECE7; --muted: #98A89F; --line: #25332C;
+    --accent: #7BCBA8; --accent-soft: #1A2C24; --warm: #E2A746; --glass: #5F7068; --danger: #F08A80;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.55 var(--body); }
+.wrap {
+  max-width: 60rem; margin: 0 auto; display: grid; gap: 48px;
+  padding-block: max(32px, env(safe-area-inset-top, 0px)) max(64px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2rem, 6vw, 3.2rem); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
+h2 { font-size: 1.5rem; font-weight: 800; line-height: 1.2; }
+h3 { font-size: 1.15rem; font-weight: 600; line-height: 1.25; }
+p { margin: 0; }
+a { color: var(--accent); text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eyebrow { font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.lead { font-size: 1.08rem; color: var(--muted); max-width: 40rem; }
+header, .section { display: grid; gap: 16px; }
+.section > p { color: var(--muted); max-width: 42rem; }
+.num { font-variant-numeric: tabular-nums; }
+.knapp { appearance: none; font: 600 .9rem var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+.knapp:hover { border-color: var(--accent); }
+.knapp.primar { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+
+/* Valgene */
+.valg { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+/* Butikknavnene er lange, så butikkfeltet får mest plass når alt står på én rad. */
+@media (min-width: 760px) { .valg { grid-template-columns: minmax(0, 1.7fr) repeat(3, minmax(0, 1fr)); } }
+.felt { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.felt label, .felt .etikett { font-size: .85rem; font-weight: 600; }
+.felt input[type="text"], .felt input[type="number"], .felt select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; width: 100%; min-width: 0; }
+.felt .hjelp { font-size: .8rem; color: var(--muted); }
+.felt .hjelp.feil { color: var(--danger); }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; width: max-content; background: var(--bg); }
+.stepper button { appearance: none; border: 0; background: transparent; color: var(--ink); font: 600 1.2rem var(--body); width: 44px; height: 42px; cursor: pointer; }
+.stepper button:hover { background: var(--accent-soft); }
+.stepper button:disabled { opacity: .35; cursor: default; background: transparent; }
+.stepper output { min-width: 5.5rem; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.avkryss { display: flex; gap: 10px; align-items: center; font-size: .95rem; padding-top: 4px; }
+.avkryss input { width: 20px; height: 20px; accent-color: var(--accent); }
+
+/* Status og glassrekka */
+.status { font-size: 1rem; }
+.status.feil { color: var(--danger); font-weight: 600; }
+.lenkeinfo { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: .92rem; color: var(--muted); }
+.lineup { display: grid; grid-template-columns: repeat(var(--antall, 8), minmax(0, 1fr)); gap: 8px; align-items: start; margin: 0; }
+.lineup a { display: grid; justify-items: center; align-content: start; gap: 6px; text-decoration: none; color: var(--ink); border-radius: 10px; padding-block: 6px; }
+.lineup a:hover { background: var(--accent-soft); }
+.lineup svg { width: 100%; max-width: 64px; height: auto; }
+.lineup .n { font: 800 1rem var(--display); }
+.lineup .lbl { font-size: .72rem; color: var(--muted); text-align: center; line-height: 1.25; overflow-wrap: anywhere; }
+@media (max-width: 560px) { .lineup { grid-template-columns: repeat(5, minmax(0, 1fr)); row-gap: 12px; } }
+.glass-outline { fill: none; stroke: var(--glass); stroke-width: 1.5; }
+.glass-stem { fill: var(--glass); }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: 16px; }
+.stat { display: grid; gap: 2px; align-content: start; }
+.stat b { font: 800 1.45rem/1.15 var(--display); font-variant-numeric: tabular-nums; }
+.stat span { font-size: .85rem; color: var(--muted); }
+
+/* Rekka */
+.picks { display: grid; border-top: 1px solid var(--line); }
+.pick { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 16px; padding-block: 20px; border-bottom: 1px solid var(--line); scroll-margin-top: 16px; }
+.pick-glass { display: grid; justify-items: center; gap: 4px; align-content: start; }
+.pick-glass .n { font: 800 1.05rem var(--display); color: var(--muted); }
+.pick-glass svg { width: 38px; height: auto; }
+.pick-body { display: grid; gap: 8px; min-width: 0; }
+.pick-body h3 { overflow-wrap: anywhere; }
+.tagline { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: .88rem; color: var(--muted); }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 600; color: var(--ink); background: var(--accent-soft); border-radius: 999px; padding: 3px 10px 3px 8px; }
+.utsolgt { font-size: .8rem; font-weight: 600; color: var(--danger); border: 1px solid var(--danger); border-radius: 999px; padding: 1px 8px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 1px var(--glass); flex: none; display: inline-block; }
+.facts { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.facts .score { color: var(--warm); font-weight: 600; }
+.facts .pour { color: var(--accent); font-weight: 600; }
+.handlinger { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: .88rem; }
+details.bytt summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.alternativer { display: grid; gap: 8px; margin-top: 10px; }
+.alternativer button { text-align: left; display: grid; gap: 2px; font: inherit; font-size: .9rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; cursor: pointer; }
+.alternativer button:hover { border-color: var(--accent); }
+.alternativer .meta { color: var(--muted); font-size: .82rem; font-variant-numeric: tabular-nums; }
+
+/* Handlelista */
+.handleliste { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; }
+.handleliste ol { margin: 0; padding-left: 1.4rem; display: grid; gap: 6px; font-variant-numeric: tabular-nums; }
+.handleliste .sum { font-weight: 600; }
+.handleliste .hjelp { color: var(--muted); font-size: .85rem; }
+.knapper { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.kopistatus { font-size: .88rem; color: var(--accent); }
+
+/* Hele hylla */
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.controls input, .controls select { font: inherit; font-size: .95rem; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; min-width: 0; }
+.controls input { flex: 1 1 14rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips button { appearance: none; font: 600 .82rem var(--body); color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px 6px 9px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.chips .c { font-weight: 400; opacity: .8; font-variant-numeric: tabular-nums; }
+.count { font-size: .9rem; color: var(--muted); }
+.list { display: grid; border-top: 1px solid var(--line); list-style: none; margin: 0; padding: 0; }
+.row { display: grid; grid-template-columns: 3.4rem minmax(0, 1fr) auto; gap: 12px; align-items: center; padding-block: 10px; border-bottom: 1px solid var(--line); }
+.badge { font: 800 1rem var(--display); font-variant-numeric: tabular-nums; color: var(--warm); }
+.badge.usikker { color: var(--muted); font-weight: 600; }
+.badge.ingen { color: var(--muted); font: 400 .78rem/1.2 var(--body); }
+.row-name { min-width: 0; display: grid; gap: 2px; }
+.row-name a { color: var(--ink); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+.row-name a:hover { text-decoration: underline; }
+.row-sub { font-size: .82rem; color: var(--muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.row-facts { font-size: .85rem; font-variant-numeric: tabular-nums; text-align: right; color: var(--muted); white-space: nowrap; }
+.row-facts b { color: var(--ink); font-weight: 600; }
+.mine { font-size: .72rem; font-weight: 600; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 0 7px; }
+@media (max-width: 560px) {
+  .row { grid-template-columns: 3rem minmax(0, 1fr); }
+  .row-facts { grid-column: 2; text-align: left; white-space: normal; }
+}
+footer { font-size: .88rem; color: var(--muted); display: grid; gap: 8px; max-width: 42rem; border-top: 1px solid var(--line); padding-top: 20px; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Juleøl fra Vinmonopolet</p>
+    <h1>Sett sammen en juleølsmaking</h1>
+    <p class="lead">Velg butikk, hvor mange dere blir og hvor mye dere vil bruke. Siden plukker øl fra ulike smaksgrupper, med best mulig score på Untappd innenfor budsjettet, og setter dem i rekkefølge fra lett til tungt.</p>
+  </header>
+
+  <form class="valg" id="valg" aria-label="Valg for smakingen">
+    <div class="felt">
+      <label for="butikk">Butikk</label>
+      <input type="text" id="butikk" list="butikker" autocomplete="off" spellcheck="false" aria-describedby="butikk-hjelp">
+      <datalist id="butikker"></datalist>
+      <span class="hjelp" id="butikk-hjelp">Skriv for å søke, eller velg «Bestill på nett».</span>
+    </div>
+    <div class="felt">
+      <span class="etikett" id="personer-etikett">Antall personer</span>
+      <div class="stepper" role="group" aria-labelledby="personer-etikett">
+        <button type="button" id="minus" aria-label="Én person færre">−</button>
+        <output id="personer" aria-live="polite">5 personer</output>
+        <button type="button" id="pluss" aria-label="Én person til">+</button>
+      </div>
+    </div>
+    <div class="felt">
+      <label for="budsjett">Budsjett i kroner</label>
+      <input type="number" id="budsjett" inputmode="numeric" min="100" max="50000" step="100">
+    </div>
+    <div class="felt">
+      <label for="antall">Antall øl</label>
+      <select id="antall"></select>
+      <label class="avkryss"><input type="checkbox" id="alkoholfritt"> Ta med ett alkoholfritt</label>
+    </div>
+  </form>
+
+  <section class="section" aria-labelledby="rekka-h">
+    <h2 id="rekka-h">Smakerekka</h2>
+    <p class="status" id="status" role="status">Henter øl …</p>
+    <div class="lenkeinfo" id="lenkeinfo" hidden>
+      <span>Rekka kommer fra en delt lenke, med dagens pris og lager.</span>
+      <button type="button" class="knapp" id="ny-rekke">Regn ut på nytt</button>
+    </div>
+    <nav class="lineup" id="lineup" aria-label="Rekkefølgen"></nav>
+    <div class="stats" id="stats"></div>
+    <div class="picks" id="picks"></div>
+    <div id="alkoholfritt-ol"></div>
+  </section>
+
+  <section class="handleliste" id="handleliste" aria-labelledby="handle-h" hidden>
+    <h2 id="handle-h">Handleliste</h2>
+    <ol id="handle-liste"></ol>
+    <p class="sum" id="handle-sum"></p>
+    <div class="knapper">
+      <button type="button" class="knapp primar" id="kopier-liste">Kopier handlelista</button>
+      <button type="button" class="knapp" id="kopier-lenke">Kopier lenke til rekka</button>
+      <span class="kopistatus" id="kopistatus" role="status"></span>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="hylla-h">
+    <h2 id="hylla-h">Alt som står på hylla</h2>
+    <p id="hylla-intro"></p>
+    <div class="controls">
+      <input id="q" type="search" placeholder="Søk etter navn eller stil" aria-label="Søk etter navn eller stil">
+      <select id="sort" aria-label="Sorter lista">
+        <option value="score">Høyest Untappd-score</option>
+        <option value="pris">Billigst først</option>
+        <option value="alkohol">Sterkest først</option>
+        <option value="navn">Navn</option>
+      </select>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Smaksgruppe"></div>
+    <p class="count" id="count" aria-live="polite"></p>
+    <ul class="list" id="list"></ul>
+  </section>
+
+  <footer id="footer">
+    <p>Dataene kommer fra <a href="https://www.olmonopolet.app/juleol/">Ølmonopolet</a>, som henter lager og priser fra Vinmonopolet og score fra Untappd.</p>
+  </footer>
+</div>
+
+<script type="module">
+import { velg, bytter, fraVarenumre, paLager, NETT, ALKOHOLFRITT } from "./utvalg.mjs";
+
+const STANDARD = { butikk: "Trondheim, Trondheim Torg", personer: 5, budsjett: 1500, antall: 8, alkoholfritt: false };
+const NETT_TEKST = "Bestill på nett";
+const MIN_PERSONER = 2, MAX_PERSONER = 14, MIN_ANTALL = 4, MAX_ANTALL = 10;
+const USIKKER = 30;
+const FARGE = {
+  "Alkoholfritt": ["#BFD9C8", "#FBF5E6"], "Surt og fruktig": ["#C8415E", "#F4D6DD"], "Lys og frisk": ["#EBCF6A", "#FBF5E6"],
+  "Gårdsøl og saison": ["#DDA33A", "#FBF5E6"], "Humle og IPA": ["#EEA33F", "#FBF5E6"], "Klassisk juleøl": ["#7A3415", "#EAD9BF"],
+  "Bokk": ["#55260F", "#E6D3B5"], "Juleale og krydret": ["#8E2F1E", "#E9D6B8"], "Belgisk": ["#A8571E", "#EFDDBF"],
+  "Sterk og fyldig": ["#6B3A14", "#E8D2AE"], "Porter og stout": ["#1A110D", "#C9A27A"], "Annet": ["#8C9A92", "#F1F1EC"],
+};
+
+const nf2 = new Intl.NumberFormat("nb-NO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const nf1 = new Intl.NumberFormat("nb-NO", { maximumFractionDigits: 1 });
+const nf0 = new Intl.NumberFormat("nb-NO", { maximumFractionDigits: 0 });
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const kr = (v) => `${nf2.format(v)} kr`;
+const $ = (id) => document.getElementById(id);
+const dot = (g) => `<span class="dot" style="background:${(FARGE[g] || FARGE.Annet)[0]}"></span>`;
+const ANTALL_ORD = ["null", "ett", "to", "tre", "fire", "fem", "seks", "sju", "åtte", "ni", "ti", "elleve"];
+const stor = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const BOWL = "M15 6 L45 6 C47 22 51 38 44 51 C40 58 35 62 30 62 C25 62 20 58 16 51 C9 38 13 22 15 6 Z";
+function glass(gruppe, id) {
+  const [vaeske, skum] = FARGE[gruppe] || FARGE.Annet;
+  return `<svg viewBox="0 0 60 96" aria-hidden="true"><defs><clipPath id="g${id}"><path d="${BOWL}"/></clipPath></defs>
+    <g clip-path="url(#g${id})"><rect x="0" y="20" width="60" height="50" fill="${vaeske}"/><rect x="0" y="13" width="60" height="7.5" fill="${skum}"/></g>
+    <path class="glass-outline" d="${BOWL}"/><rect class="glass-stem" x="28.75" y="61" width="2.5" height="27" rx="1"/><ellipse class="glass-stem" cx="30" cy="90" rx="13" ry="2.6"/></svg>`;
+}
+
+let data, valg = { ...STANDARD }, rekke = [], alkoholfritt = null, feil = null, fraLenke = false;
+
+/* Lenken: valgene og varenumrene i rekka, så en delt lenke viser de samme ølene. */
+function lesLenke() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  const tall = (navn, min, max, standard) => {
+    const v = parseInt(p.get(navn), 10);
+    return Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : standard;
+  };
+  const butikk = p.get("b");
+  valg = {
+    butikk: butikk === NETT || data.butikker.includes(butikk) ? butikk : STANDARD.butikk,
+    personer: tall("p", MIN_PERSONER, MAX_PERSONER, STANDARD.personer),
+    budsjett: tall("kr", 100, 50000, STANDARD.budsjett),
+    antall: tall("n", MIN_ANTALL, MAX_ANTALL, STANDARD.antall),
+    alkoholfritt: p.get("af") === "1",
+  };
+  const ider = (p.get("ol") || "").split(",").filter(Boolean);
+  if (ider.length) {
+    rekke = fraVarenumre(data, valg, ider);
+    alkoholfritt = p.get("afol") ? fraVarenumre(data, valg, [p.get("afol")])[0] ?? null : null;
+    feil = null;
+    fraLenke = true;
+  } else {
+    beregn();
+  }
+}
+
+function skrivLenke() {
+  const p = new URLSearchParams({ b: valg.butikk, p: valg.personer, kr: valg.budsjett, n: valg.antall, af: valg.alkoholfritt ? "1" : "0" });
+  if (rekke.length) p.set("ol", rekke.map((o) => o.id).join(","));
+  if (alkoholfritt) p.set("afol", alkoholfritt.id);
+  history.replaceState(null, "", "#" + p.toString());
+}
+
+function beregn() {
+  const r = velg(data, valg);
+  rekke = r.rekke;
+  alkoholfritt = r.alkoholfritt;
+  feil = r.feil;
+  fraLenke = false;
+}
+
+function oppdater() {
+  beregn();
+  skrivLenke();
+  tegn();
+}
+
+/* Valgene */
+function fyllValg() {
+  $("butikker").innerHTML = [NETT_TEKST, ...data.butikker].map((b) => `<option value="${esc(b)}"></option>`).join("");
+  $("antall").innerHTML = Array.from({ length: MAX_ANTALL - MIN_ANTALL + 1 }, (_, i) => MIN_ANTALL + i)
+    .map((n) => `<option value="${n}">${n} øl</option>`).join("");
+}
+function visValg() {
+  $("butikk").value = valg.butikk === NETT ? NETT_TEKST : valg.butikk;
+  $("personer").textContent = `${valg.personer} personer`;
+  $("minus").disabled = valg.personer <= MIN_PERSONER;
+  $("pluss").disabled = valg.personer >= MAX_PERSONER;
+  $("budsjett").value = valg.budsjett;
+  $("antall").value = String(valg.antall);
+  $("alkoholfritt").checked = valg.alkoholfritt;
+}
+$("valg").addEventListener("submit", (e) => e.preventDefault());
+$("butikk").addEventListener("change", () => {
+  const v = $("butikk").value.trim();
+  const hjelp = $("butikk-hjelp");
+  const treff = v === NETT_TEKST ? NETT : data.butikker.find((b) => b.toLowerCase() === v.toLowerCase());
+  if (!treff) {
+    hjelp.textContent = "Fant ikke butikken. Velg et navn fra lista.";
+    hjelp.classList.add("feil");
+    return;
+  }
+  hjelp.textContent = "Skriv for å søke, eller velg «Bestill på nett».";
+  hjelp.classList.remove("feil");
+  valg.butikk = treff;
+  oppdater();
+});
+$("minus").addEventListener("click", () => { if (valg.personer > MIN_PERSONER) { valg.personer--; oppdater(); } });
+$("pluss").addEventListener("click", () => { if (valg.personer < MAX_PERSONER) { valg.personer++; oppdater(); } });
+$("budsjett").addEventListener("change", () => {
+  const v = parseInt($("budsjett").value, 10);
+  if (!Number.isFinite(v) || v < 100) { $("budsjett").value = valg.budsjett; return; }
+  valg.budsjett = Math.min(50000, v);
+  oppdater();
+});
+$("antall").addEventListener("change", () => { valg.antall = parseInt($("antall").value, 10); oppdater(); });
+$("alkoholfritt").addEventListener("change", () => { valg.alkoholfritt = $("alkoholfritt").checked; oppdater(); });
+$("ny-rekke").addEventListener("click", oppdater);
+
+/* Rekka */
+const alleIRekka = () => (alkoholfritt ? [...rekke, alkoholfritt] : rekke);
+function lagerTekst(o) {
+  if (valg.butikk === NETT) return o.nett ? "kan bestilles på nett" : "kan ikke bestilles på nett";
+  return `${nf0.format(paLager(data, o, valg.butikk))} på lager`;
+}
+function scoreTekst(o) {
+  if (o.score == null) return "ingen score ennå";
+  return `Untappd ${nf2.format(o.score)}`;
+}
+function innsjekkTekst(o) {
+  const n = `${nf0.format(o.innsjekker)} innsjekker`;
+  return o.innsjekker < USIKKER ? `${n}, usikker` : n;
+}
+function skjenkTekst(o) {
+  const cl = (o.flasker * o.cl) / valg.personer;
+  return `${o.flasker === 1 ? "1 flaske" : `${o.flasker} flasker`}, ca. ${nf0.format(Math.round(cl))} cl hver`;
+}
+
+function olAvsnitt(o, nr, plass) {
+  const alt = plass == null ? [] : bytter(data, valg, rekke, alkoholfritt, plass);
+  return `<article class="pick" id="${nr ? `ol-${nr}` : "ol-alkoholfritt"}">
+    <div class="pick-glass">${nr ? `<span class="n">${nr}</span>` : ""}${glass(o.gruppe, "p" + o.id)}</div>
+    <div class="pick-body">
+      <h3 tabindex="-1">${esc(o.navn)}</h3>
+      <div class="tagline"><span class="chip">${dot(o.gruppe)}${esc(o.gruppe)}</span><span>${esc(o.stil)}</span>${o.utsolgt ? `<span class="utsolgt">Ikke nok på lager nå</span>` : ""}</div>
+      <div class="facts">
+        <span class="score">${scoreTekst(o)}</span><span>${innsjekkTekst(o)}</span>
+        <span>${nf1.format(o.alkohol)} %</span><span>${nf1.format(o.cl)} cl</span><span>${kr(o.pris)}</span>
+        <span>${lagerTekst(o)}</span><span class="pour">${skjenkTekst(o)}</span>
+      </div>
+      <div class="handlinger">
+        ${o.polet ? `<a href="${esc(o.polet)}" target="_blank" rel="noopener">Se varen hos Polet</a>` : ""}
+        ${o.untappd ?`<a href="${esc(o.untappd)}" target="_blank" rel="noopener">Se på Untappd</a>` : ""}
+      </div>
+      ${alt.length ? `<details class="bytt"><summary>Bytt ut</summary><div class="alternativer">${alt.map((a) => `
+        <button type="button" data-plass="${plass}" data-id="${esc(a.id)}">
+          <span>${esc(a.navn)}</span>
+          <span class="meta">${scoreTekst(a)} · ${nf1.format(a.alkohol)} % · ${nf1.format(a.cl)} cl · ${kr(a.pris)}</span>
+        </button>`).join("")}</div></details>` : ""}
+    </div>
+  </article>`;
+}
+
+$("picks").addEventListener("click", (e) => {
+  const knapp = e.target.closest("button[data-plass]");
+  if (!knapp) return;
+  const plass = Number(knapp.dataset.plass);
+  const ny = bytter(data, valg, rekke, alkoholfritt, plass).find((o) => o.id === knapp.dataset.id);
+  if (!ny) return;
+  rekke = rekke.map((o, i) => (i === plass ? ny : o));
+  skrivLenke();
+  tegn();
+  document.querySelector(`#ol-${plass + 1} h3`)?.focus();
+});
+
+function tegn() {
+  visValg();
+  const sted = valg.butikk === NETT ? "på nett" : `i ${valg.butikk}`;
+  const totalt = alleIRekka().reduce((s, o) => s + o.flasker * o.pris, 0);
+  $("status").classList.toggle("feil", Boolean(feil));
+  $("status").textContent = feil
+    ? feil
+    : `${stor(ANTALL_ORD[rekke.length] ?? String(rekke.length))} øl ${sted} for ${kr(totalt)}, til ${valg.personer} personer.` +
+      (valg.alkoholfritt && !alkoholfritt ? " Fant ikke noe alkoholfritt juleøl som passer." : "");
+  $("lenkeinfo").hidden = !fraLenke;
+
+  $("lineup").style.setProperty("--antall", Math.max(rekke.length, 1));
+  $("lineup").innerHTML = rekke.map((o, i) => `<a href="#ol-${i + 1}" data-hopp="ol-${i + 1}">${glass(o.gruppe, "l" + o.id)}
+    <span class="n">${i + 1}</span><span class="lbl">${esc(o.gruppe)}</span></a>`).join("");
+
+  const alle = alleIRekka();
+  const flasker = alle.reduce((s, o) => s + o.flasker, 0);
+  const cl = alle.reduce((s, o) => s + (o.flasker * o.cl) / valg.personer, 0);
+  const gram = alle.reduce((s, o) => s + o.flasker * o.cl * 10 * (o.alkohol / 100) * 0.789, 0);
+  $("stats").innerHTML = rekke.length ? [
+    [nf0.format(flasker), "flasker å kjøpe"],
+    [`${nf0.format(Math.round(totalt))} kr`, "til sammen"],
+    [`${nf0.format(Math.round(totalt / valg.personer))} kr`, "per person"],
+    [`${nf0.format(Math.round(cl))} cl`, "i glasset per person"],
+    [`ca. ${nf0.format(Math.round(gram / 12 / valg.personer))}`, "alkoholenheter per person"],
+  ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("") : "";
+
+  $("picks").innerHTML = rekke.map((o, i) => olAvsnitt(o, i + 1, i)).join("");
+  $("alkoholfritt-ol").innerHTML = alkoholfritt
+    ? `<h3 style="margin-top:24px">Alkoholfritt</h3><div class="picks">${olAvsnitt(alkoholfritt, null, null)}</div>` : "";
+
+  $("handleliste").hidden = rekke.length === 0;
+  $("handle-liste").innerHTML = alle.map((o) => `<li>${o.flasker} × ${esc(o.navn)} <span class="hjelp">(varenr. ${esc(o.id)})</span>, ${kr(o.flasker * o.pris)}</li>`).join("");
+  $("handle-sum").textContent = `Til sammen ${kr(totalt)}`;
+  $("kopistatus").textContent = "";
+  tegnHylla();
+}
+
+$("lineup").addEventListener("click", (e) => {
+  const a = e.target.closest("a[data-hopp]");
+  if (!a) return;
+  // Lenka i adressefeltet skal beholde valgene, så hoppet gjøres uten å endre den.
+  e.preventDefault();
+  document.getElementById(a.dataset.hopp)?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  document.querySelector(`#${a.dataset.hopp} h3`)?.focus({ preventScroll: true });
+});
+
+/* Kopiering */
+async function kopier(tekst, melding) {
+  try {
+    await navigator.clipboard.writeText(tekst);
+    $("kopistatus").textContent = melding;
+  } catch {
+    $("kopistatus").textContent = "Kunne ikke kopiere. Marker teksten og kopier selv.";
+  }
+}
+$("kopier-liste").addEventListener("click", () => {
+  const sted = valg.butikk === NETT ? "bestilles på nett" : valg.butikk;
+  const linjer = alleIRekka().map((o) => `${o.flasker} × ${o.navn} (varenr. ${o.id}), ${kr(o.flasker * o.pris)}`);
+  const totalt = alleIRekka().reduce((s, o) => s + o.flasker * o.pris, 0);
+  kopier([`Juleølsmaking for ${valg.personer} personer, ${sted}`, ...linjer, `Til sammen ${kr(totalt)}`, location.href].join("\n"), "Handlelista er kopiert.");
+});
+$("kopier-lenke").addEventListener("click", () => kopier(location.href, "Lenken er kopiert."));
+
+/* Hele hylla */
+let gruppe = "Alle";
+function hylla() {
+  return data.ol.filter((o) => (valg.butikk === NETT ? o.nett : paLager(data, o, valg.butikk) > 0));
+}
+function tegnHylla() {
+  const ol = hylla();
+  const sted = valg.butikk === NETT ? "kan bestilles på nett" : `står på hylla i ${valg.butikk}`;
+  $("hylla-intro").textContent = `${nf0.format(ol.length)} av årets ${nf0.format(data.ol.length)} juleøl ${sted}. Grå score betyr under ${USIKKER} innsjekker.`;
+  const teller = {};
+  for (const o of ol) teller[o.gruppe] = (teller[o.gruppe] || 0) + 1;
+  const grupper = ["Alle", ...data.rekkefolge, ALKOHOLFRITT, "Annet"].filter((g) => g === "Alle" || teller[g]);
+  if (!grupper.includes(gruppe)) gruppe = "Alle";
+  $("chips").innerHTML = grupper.map((g) => `<button type="button" data-g="${esc(g)}" aria-pressed="${g === gruppe}">
+    ${g === "Alle" ? "" : dot(g)}${esc(g)} <span class="c">${g === "Alle" ? ol.length : teller[g]}</span></button>`).join("");
+  tegnListe();
+}
+$("chips").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-g]");
+  if (!b) return;
+  gruppe = b.dataset.g;
+  tegnHylla();
+});
+const SORT = {
+  score: (a, b) => (b.score ?? -1) - (a.score ?? -1),
+  pris: (a, b) => a.pris - b.pris,
+  alkohol: (a, b) => b.alkohol - a.alkohol,
+  navn: (a, b) => a.navn.localeCompare(b.navn, "nb"),
+};
+function tegnListe() {
+  const q = $("q").value.trim().toLowerCase();
+  const iRekka = new Set(alleIRekka().map((o) => o.id));
+  const rader = hylla()
+    .filter((o) => gruppe === "Alle" || o.gruppe === gruppe)
+    .filter((o) => !q || `${o.navn} ${o.stil} ${o.gruppe}`.toLowerCase().includes(q))
+    .sort(SORT[$("sort").value] || SORT.score);
+  $("count").textContent = `Viser ${rader.length}`;
+  $("list").innerHTML = rader.length ? rader.map((o) => {
+    const badge = o.score == null ? `<span class="badge ingen">Ingen score</span>`
+      : `<span class="badge${o.innsjekker < USIKKER ? " usikker" : ""}" title="${esc(innsjekkTekst(o))}">${nf2.format(o.score)}</span>`;
+    return `<li class="row">${badge}
+      <div class="row-name">${o.polet ? `<a href="${esc(o.polet)}" target="_blank" rel="noopener">${esc(o.navn)}</a>` : `<span>${esc(o.navn)}</span>`}
+        <span class="row-sub">${dot(o.gruppe)}${esc(o.stil || o.gruppe)}${iRekka.has(o.id) ? ` <span class="mine">I rekka</span>` : ""}</span></div>
+      <div class="row-facts"><b>${kr(o.pris)}</b> · ${nf1.format(o.alkohol)} % · ${nf1.format(o.cl)} cl${valg.butikk === NETT ? "" : ` · ${nf0.format(paLager(data, o, valg.butikk))} stk`}</div>
+    </li>`;
+  }).join("") : `<li class="row"><span></span><span>Ingen øl passer søket.</span></li>`;
+}
+$("q").addEventListener("input", tegnListe);
+$("sort").addEventListener("change", tegnListe);
+
+function tegnBunntekst() {
+  const tid = new Intl.DateTimeFormat("nb-NO", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Oslo" })
+    .format(new Date(data.hentet)).replace(":", ".");
+  $("footer").innerHTML = `
+    <p>Dataene kommer fra <a href="${esc(data.kilde)}/juleol/">Ølmonopolet</a>, som henter lager og priser fra Vinmonopolet og score fra Untappd. De ble hentet ${esc(tid)}. Lageret oppdateres én gang i døgnet, så sjekk varen hos Polet før du drar.</p>
+    <p>Scoren er snittet på Untappd, fra 0 til 5. Når rekka velges, trekkes øl med få innsjekker mot snittet i smaksgruppa. Mengdene regner med omtrent 7 cl per øl og person, og 5 cl av øl på 10 % eller mer. En alkoholenhet er omtrent 12 gram ren alkohol.</p>
+    <p>Et hobbyprosjekt uten tilknytning til Vinmonopolet, Ølmonopolet eller Untappd, og uten reklame.</p>`;
+}
+
+async function start() {
+  try {
+    const svar = await fetch("data/juleol.json", { cache: "no-cache" });
+    if (!svar.ok) throw new Error(svar.status);
+    data = await svar.json();
+  } catch {
+    $("status").textContent = "Fant ikke dataene. Prøv igjen om litt.";
+    $("status").classList.add("feil");
+    return;
+  }
+  fyllValg();
+  lesLenke();
+  skrivLenke();
+  tegnBunntekst();
+  tegn();
+}
+window.addEventListener("hashchange", () => { if (data) { lesLenke(); tegn(); } });
+start();
+</script>
+</body>
+</html>

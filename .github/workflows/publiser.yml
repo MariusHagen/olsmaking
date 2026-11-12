@@ -1,0 +1,50 @@
+# Henter juleøl fra Ølmonopolet og publiserer siden på GitHub Pages hver natt, og når den startes for hånd.
+# Feiler testene eller hentingen, publiseres ingenting, og siden beholder gårsdagens data.
+name: Hent data og publiser
+
+on:
+  schedule:
+    - cron: "0 4 * * *"  # 04 UTC, etter at Ølmonopolet har oppdatert lageret om kvelden
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  bygg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # hentingen venter høyst fem minutter før nytt forsøk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tester
+        run: tools/verifiser.sh
+      - name: Hent juleøl fra Ølmonopolet
+        run: python3 juleol.py --ut site/data/juleol.json
+        env:
+          OLMONOPOLET_API_KEY: ${{ secrets.OLMONOPOLET_API_KEY }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  publiser:
+    needs: bygg
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Bare publiseringen trenger skriverett til Pages; hentingen med hemmeligheten kjører uten.
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publiser.outputs.page_url }}
+    steps:
+      - id: publiser
+        uses: actions/deploy-pages@v4
