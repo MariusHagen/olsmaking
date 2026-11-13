@@ -74,6 +74,12 @@ Det gir plass til rundt 75 runder i måneden, delt med det lunsjprosjektet bruke
 - Alle kan starte runder, men høyst 20 nye i timen og 100 aktive til sammen. Høyst 12 øl og 50 deltakere per
   runde, kallenavn høyst 30 og kommentar høyst 140 tegn. Nøklene lagres som hash og sammenlignes i konstant tid.
 - Alle nøkler i Redis får levetid på sju dager ved hver skriving, så tiden regnes fra siste endring.
+- Tre sikringer som beskytter den delte kvoten, og ingen av dem bruker Redis:
+  - Ukjente ruter og koder som ikke er seks tegn fra det gyldige alfabetet, avvises før lageret.
+  - Hver serverinstans tar imot høyst 600 kall i minuttet, talt i sitt eget minne, og svarer 429 over det.
+    Grensen gjelder instansen og ikke IP-adressen, så et kontor bak samme adresse ikke stoppes.
+  - Nødbryteren `SMAKERUNDE_AV=1` i Vercel får alle ruter til å svare 503 med en gang, og sidene sier at
+    smakerunden er slått av.
 - CORS bare for `https://mariushagen.github.io`, og `http://localhost:8000` bare når den ikke kjører i
   produksjon. `OPTIONS` besvares for `POST` og `PUT`. Resultatene hentes uten egne headere, så pollingen
   ikke utløser ekstra forhåndskall.
@@ -105,7 +111,7 @@ Det gir plass til rundt 75 runder i måneden, delt med det lunsjprosjektet bruke
 - `tools/lokal-api.mjs` kjører funksjonen med minnelageret på port 8787, og `.claude/launch.json` får en
   oppføring for den.
 - `docs/deploy.md` med oppsettet på Vercel, som i lunsjprosjektet: prosjekt fra repoet uten byggesteg og bare
-  med `api/`, Upstash-tilkoblingen, variablene og en røyktest.
+  med `api/`, Upstash-tilkoblingen, variablene, nødbryteren og en røyktest.
 - Regelen om personvern i `CLAUDE.md` blir: hovedsiden sender ingenting om brukeren. Smakerunden lagrer
   kallenavn, karakterer og kommentarer hos Upstash til de slettes, og ingenting annet. Vi lagrer ikke
   IP-adresser selv, men Vercel og Upstash fører egne logger. README sier det samme, og at koden er det eneste
@@ -125,6 +131,8 @@ Det gir plass til rundt 75 runder i måneden, delt med det lunsjprosjektet bruke
   `olsmaking:` og levetid
 - [ ] En blind runde svarer bare med felter fra en tillatt liste før avslutningen, i alle ruter, og testen er
   sett feile på et bevisst brudd
+- [ ] Ugyldig kode, kall over grensen per instans og nødbryteren gir 404, 429 og 503 uten et eneste kall til
+  lageret, talt i minnelageret
 - [ ] En test teller Redis-kommandoene i en simulert runde (15 personer, 10 øl, 90 minutter, storskjerm hvert
   5. sekund, deltakere hvert 20. sekund i den siste timen), og de er under 8 000
 - [ ] Playwright lokalt mot `tools/lokal-api.mjs`, som et verktøy utenfor `verifiser.sh`: verten starter en
@@ -149,7 +157,8 @@ vekt på blindrunden, nøklene og grensene. Sidene: skjermbilder.
 | 3 Storskjermen, hovedsiden, utskrift og bilde | 0,75 t | |
 | 4 Lokal kjøring, docs, Playwright og skjermbilder | 0,25 t | Test med to telefoner og noen kolleger |
 
-Risiko: koden på seks tegn er det eneste som beskytter en runde, og grensene stopper misbruk fra nettlesere,
-men ikke alt fra skript. Rundene deler database og kvote med lunsjprosjektet: brukes kvoten opp, stopper
-begge til neste måned, og en feil i API-et kan i verste fall nå lunsjdataene. Prefikset og testen av det
-holder dem adskilt.
+Risiko: koden på seks tegn er det eneste som beskytter en runde. Rundene deler database og kvote med
+lunsjprosjektet: brukes kvoten opp, stopper begge til neste måned, og en feil i API-et kan i verste fall nå
+lunsjdataene. Sikringene holder spam unna lageret, nødbryteren stopper smakerunden med én endring i Vercel,
+og prefikset med testen av det holder dataene adskilt. Bremsen per instans stopper ikke et angrep fordelt på
+mange instanser, men gir tid til å slå av nødbryteren.
