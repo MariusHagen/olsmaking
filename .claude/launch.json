@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "-d", "site", "8000"],
       "port": 8000
+    },
+    {
+      "name": "olsmaking-api",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/lokal-api.mjs"],
+      "port": 8787
     }
   ]
 }

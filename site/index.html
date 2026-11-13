@@ -6,70 +6,10 @@
 <title>Ølsmaking</title>
 <meta name="description" content="Sett sammen en juleølsmaking fra Vinmonopolet: velg butikk, antall personer og budsjett, og få øl fra ulike smaksgrupper, fra lett til tungt.">
 <meta name="theme-color" content="#133328">
+<link rel="stylesheet" href="felles.css">
 <style>
 /* Mørkegrønt julehode over hele bredden, så én smal kolonne: valgene, glassrekka, tallene, ett avsnitt per øl,
    handlelista og hele hylla. Julerødt på det man trykker på, gull på score. Bare systemfonter. */
-:root {
-  --bg: #F6F7F4; --surface: #FFFFFF; --ink: #1B2420; --muted: #5A6660; --line: #DCE2DC;
-  --accent: #1E5A43; --accent-soft: #E3EEE7; --rod: #B3262E; --rod-soft: #FBE9E8; --gull: #9C6F0B;
-  --glass: #93A299; --danger: #A3302B;
-  --hode: #133328; --hode-ink: #F4F1E8; --hode-muted: #C6D4CC; --gull-lys: #EBC765;
-  --display: "Avenir Next", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
-  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0C1613; --surface: #13211C; --ink: #E6ECE8; --muted: #9AAAA2; --line: #24352E;
-    --accent: #7FCBA8; --accent-soft: #1A2E26; --rod: #EF6A64; --rod-soft: #3A1E1D; --gull: #E9BE52;
-    --glass: #5F7068; --danger: #F08A80;
-    --hode: #0A1B16; --hode-ink: #F3F1EA; --hode-muted: #AFC2B9; --gull-lys: #E9C35A;
-    color-scheme: dark;
-  }
-}
-* { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.55 var(--body); }
-.sider { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.wrap { max-width: 60rem; margin: 0 auto; display: grid; gap: 44px; padding-block: 0 max(64px, env(safe-area-inset-bottom, 0px)); }
-h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
-h1 { font-size: clamp(2rem, 6vw, 3.2rem); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
-h2 { font-size: 1.5rem; font-weight: 800; line-height: 1.2; }
-h2.stjerne::before { content: "✦"; color: var(--gull); font-size: .8em; margin-right: .4em; }
-h3 { font-size: 1.15rem; font-weight: 600; line-height: 1.25; }
-p { margin: 0; }
-a { color: var(--accent); text-underline-offset: 3px; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.section { display: grid; gap: 16px; }
-.section > p { color: var(--muted); max-width: 42rem; }
-.knapp { appearance: none; font: 600 .9rem var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer; }
-.knapp:hover { border-color: var(--rod); }
-.knapp.primar { background: var(--rod); border-color: var(--rod); color: #fff; }
-.lenkeknapp { appearance: none; background: none; border: 0; padding: 0; color: var(--accent); font: 600 .85rem var(--body); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
-.hjelp { font-size: .8rem; color: var(--muted); }
-.hjelp.feil { color: var(--danger); }
-
-/* Julehodet */
-.julehode { position: relative; overflow: hidden; color: var(--hode-ink); padding-top: env(safe-area-inset-top, 0px);
-  background: radial-gradient(120% 160% at 85% -20%, #2B5E4A 0%, var(--hode) 60%); }
-.julehode canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.julelys { position: relative; height: 30px; filter: drop-shadow(0 0 5px rgba(255, 214, 140, .55));
-  background:
-    radial-gradient(circle at 15px 18px, #FF5C5C 0 5px, transparent 5.6px),
-    radial-gradient(circle at 45px 21px, #FFD15C 0 5px, transparent 5.6px),
-    radial-gradient(circle at 75px 18px, #66DE9C 0 5px, transparent 5.6px),
-    radial-gradient(circle at 105px 21px, #9CCBFF 0 5px, transparent 5.6px),
-    linear-gradient(to bottom, transparent 0 11px, rgba(255, 255, 255, .28) 11px 12px, transparent 12px);
-  background-size: 120px 30px; background-repeat: repeat-x; }
-.julelys::after { content: ""; position: absolute; inset: 0; background-size: 120px 30px; background-repeat: repeat-x;
-  background-image: radial-gradient(circle at 15px 18px, rgba(255, 255, 255, .95) 0 2px, transparent 3px),
-    radial-gradient(circle at 75px 18px, rgba(255, 255, 255, .95) 0 2px, transparent 3px);
-  animation: blink 2.6s ease-in-out infinite alternate; }
-@keyframes blink { from { opacity: .15; } to { opacity: 1; } }
-.hode-innhold { position: relative; max-width: 60rem; margin: 0 auto; display: grid; gap: 14px; padding-block: 18px 44px; }
-.hode-innhold .eyebrow { font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--gull-lys); }
-.hode-innhold .lead { font-size: 1.08rem; color: var(--hode-muted); max-width: 40rem; }
-
 /* Valgene */
 .valg { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); margin-top: -28px; position: relative;
@@ -147,7 +87,10 @@ details.bytt summary { cursor: pointer; color: var(--rod); font-weight: 600; }
 .alternativer .meta { color: var(--muted); font-size: .82rem; font-variant-numeric: tabular-nums; }
 
 /* Handlelista */
-.handleliste { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; }
+.handleliste, .smakerunde { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; }
+.smakerunde p { color: var(--muted); max-width: 42rem; }
+.smakerunde .avkryss { display: flex; gap: 10px; align-items: center; }
+.smakerunde .avkryss input { width: 20px; height: 20px; accent-color: var(--rod); }
 .handleliste ol { margin: 0; padding-left: 1.4rem; display: grid; gap: 6px; font-variant-numeric: tabular-nums; }
 .handleliste .sum { font-weight: 600; }
 .knapper { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -178,10 +121,6 @@ details.bytt summary { cursor: pointer; color: var(--rod); font-weight: 600; }
   .row { grid-template-columns: 3rem minmax(0, 1fr); }
   .row-facts { grid-column: 2; text-align: left; white-space: normal; }
 }
-footer { font-size: .88rem; color: var(--muted); display: grid; gap: 8px; max-width: 42rem; border-top: 1px solid var(--line); padding-top: 20px; }
-footer .hilsen { font-family: var(--display); font-weight: 700; color: var(--rod); }
-[hidden] { display: none !important; }
-@media (prefers-reduced-motion: reduce) { .julelys::after { animation: none; opacity: .6; } }
 </style>
 </head>
 <body>
@@ -262,6 +201,16 @@ footer .hilsen { font-family: var(--display); font-weight: 700; color: var(--rod
     </div>
   </section>
 
+  <section class="smakerunde" id="smakerunde" aria-labelledby="smak-h" hidden>
+    <h2 id="smak-h" class="stjerne">Smak sammen</h2>
+    <p>Start en smakerunde med denne rekka. Alle blir med på mobilen med en kode og gir hvert øl stjerner, og resultatene vises på storskjerm mens dere smaker.</p>
+    <label class="avkryss"><input type="checkbox" id="blind"> Blindsmaking: navnene skjules til du avslutter runden</label>
+    <div class="knapper">
+      <button type="button" class="knapp primar" id="start-runde">Start smakerunde</button>
+      <span class="hjelp" id="runde-status" role="status"></span>
+    </div>
+  </section>
+
   <section class="section" id="hylla" aria-labelledby="hylla-h" hidden>
     <h2 id="hylla-h" class="stjerne">Alt som står på hylla</h2>
     <p id="hylla-intro"></p>
@@ -286,6 +235,8 @@ footer .hilsen { font-family: var(--display); font-weight: 700; color: var(--rod
 
 <script type="module">
 import { velg, bytter, fraVarenumre, paLager, NETT, ALKOHOLFRITT } from "./utvalg.mjs";
+import { sno } from "./sno.mjs";
+import { SMAKERUNDE, api, huskSkriv } from "./oppsett.mjs";
 
 const STANDARD = { butikk: null, personer: 5, budsjett: 1500, antall: 8, alkoholfrie: 0 };
 const NETT_TEKST = "Bestill på nett";
@@ -640,6 +591,7 @@ function tegn() {
   $("handle-liste").innerHTML = alle.map((o) => `<li>${o.flasker} × ${esc(o.navn)} <span class="hjelp">(varenr. ${esc(o.id)})</span>, ${kr(o.flasker * o.pris)}</li>`).join("");
   $("handle-sum").textContent = `Til sammen ${kr(totalt)}`;
   $("kopistatus").textContent = "";
+  $("smakerunde").hidden = !SMAKERUNDE || rekke.length === 0;
   if (harButikk) tegnHylla();
 }
 
@@ -669,6 +621,24 @@ $("kopier-liste").addEventListener("click", () => {
   kopier([`Juleølsmaking for ${valg.personer} personer, ${sted}`, ...linjer, `Til sammen ${kr(totalt)}`, location.href].join("\n"), "Handlelista er kopiert.");
 });
 $("kopier-lenke").addEventListener("click", () => kopier(location.href, "Lenken er kopiert."));
+
+/* Smakerunden: rekka, og alkoholfrie så langt det er plass, sendes til API-et. */
+const MAKS_I_RUNDE = 12;
+$("start-runde").addEventListener("click", async () => {
+  const knapp = $("start-runde");
+  const ol = [...rekke, ...alkoholfrie].slice(0, MAKS_I_RUNDE)
+    .map((o) => ({ navn: o.navn, gruppe: o.gruppe, stil: o.stil, score: o.score, alkohol: o.alkohol, cl: o.cl, pris: o.pris, id: o.id, polet: o.polet }));
+  knapp.disabled = true;
+  $("runde-status").textContent = "Starter runden …";
+  try {
+    const { kode, vertNokkel } = await api("", { metode: "POST", body: { ol, blind: $("blind").checked } });
+    huskSkriv(`olsmaking.vert.${kode}`, vertNokkel);
+    location.href = `vert.html#${kode}`;
+  } catch (e) {
+    $("runde-status").textContent = e.message;
+    knapp.disabled = false;
+  }
+});
 
 /* Hele hylla */
 let gruppe = "Alle";
@@ -728,44 +698,6 @@ function tegnBunntekst() {
     <p>Scoren er snittet på Untappd, fra 0 til 5. Når rekka velges, trekkes øl med få innsjekker mot snittet i smaksgruppa. Mengdene regner med omtrent 7 cl per øl og person, og 5 cl av øl og mjød på 10 % eller mer. En alkoholenhet er omtrent 12 gram ren alkohol.</p>
     <p>Et hobbyprosjekt uten tilknytning til Vinmonopolet, Ølmonopolet eller Untappd, og uten reklame.</p>
     <p class="hilsen">God jul, og drikk med måte.</p>`;
-}
-
-/* Snø i julehodet. Står stille når enheten ber om mindre bevegelse, og stopper når hodet er ute av syne. */
-function sno() {
-  const c = $("sno"), ctx = c.getContext("2d");
-  if (!ctx) return;
-  let w = 0, h = 0, fnugg = [], synlig = true, kjorer = false;
-  const lag = () => {
-    const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
-    w = r.width; h = r.height;
-    c.width = Math.round(w * d); c.height = Math.round(h * d);
-    ctx.setTransform(d, 0, 0, d, 0, 0);
-    fnugg = Array.from({ length: Math.round(w / 12) }, () => ({
-      x: Math.random() * w, y: Math.random() * h, r: 0.7 + Math.random() * 1.9, v: 0.15 + Math.random() * 0.45, s: Math.random() * 6.28,
-    }));
-  };
-  const tegnFnugg = () => {
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-    for (const f of fnugg) { ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.2832); ctx.fill(); }
-  };
-  const steg = () => {
-    if (!synlig) { kjorer = false; return; }
-    for (const f of fnugg) {
-      f.y += f.v; f.s += 0.012; f.x += Math.sin(f.s) * 0.25;
-      if (f.y > h + 3) { f.y = -3; f.x = Math.random() * w; }
-    }
-    tegnFnugg();
-    requestAnimationFrame(steg);
-  };
-  lag();
-  tegnFnugg();
-  addEventListener("resize", () => { lag(); tegnFnugg(); });
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  new IntersectionObserver(([e]) => {
-    synlig = e.isIntersecting;
-    if (synlig && !kjorer) { kjorer = true; requestAnimationFrame(steg); }
-  }).observe(c);
 }
 
 async function start() {

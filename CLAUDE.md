@@ -16,6 +16,10 @@ Repoet og siden er offentlige.
 - `site/index.html` er siden. Den henter `data/juleol.json` når den åpnes, og har valgene i lenken.
 - `.github/workflows/publiser.yml` kjører testene, henter data og publiserer `site/` på GitHub Pages hver
   natt kl. 04 UTC, og når den startes for hånd.
+- Smakerunden: `api/runde.mjs` er én Vercel-funksjon i et eget Vercel-prosjekt, og all logikken ligger i
+  `api/_lib/smakerunde.mjs` med lageret i `api/_lib/lager.mjs` (Upstash via REST, eller minnet lokalt og i
+  tester). `site/smak.html` er deltakersiden, `site/vert.html` storskjermen, og `site/oppsett.mjs` har adressen
+  til API-et. Oppsettet på Vercel står i `docs/deploy.md`.
 
 ## Kommandoer
 
@@ -23,6 +27,7 @@ Repoet og siden er offentlige.
 tools/verifiser.sh                      # alle testene
 python3 juleol.py                       # hent data til site/data/juleol.json (ett kall)
 python3 -m http.server -d site 8000     # siden lokalt på http://localhost:8000
+node tools/lokal-api.mjs                # API-et for smakerunden lokalt på port 8787, med minnelager
 ```
 
 ## Regler som ikke synes i koden
@@ -35,8 +40,15 @@ python3 -m http.server -d site 8000     # siden lokalt på http://localhost:8000
 - Ingen reklame for alkohol: ingen annonser, betalte lenker eller bånd til produsenter, og nøktern tekst.
   Ikke Polets navn eller logo i navnet på siden.
 - Ølmonopolet nevnes og lenkes til i bunnteksten.
-- Siden sender ingenting om brukeren noe sted: posisjonen fra «Finn nærmeste butikk» brukes bare i
-  nettleseren, og valgt butikk huskes bare i `localStorage`. Ingen eksterne fonter, skript eller sporing.
+- Hovedsiden sender ingenting om brukeren: posisjonen fra «Finn nærmeste butikk» brukes bare i nettleseren,
+  og valgt butikk huskes bare i `localStorage`. Smakerunden lagrer kallenavn, karakterer og kommentarer hos
+  Upstash i sju dager etter siste endring, og ingenting annet. Vi lagrer ikke IP-adresser selv, men Vercel og
+  Upstash fører egne logger. Ingen eksterne fonter, skript eller sporing.
+- Upstash-databasen deles med lunsjprosjektet. Alle nøkler har prefikset `olsmaking:`, og lageret avviser
+  alt annet. Nye ruter må gå gjennom sikringene før lageret: ugyldig kode og ukjent rute avvises, bremsen per
+  instans, og nødbryteren `SMAKERUNDE_AV=1`.
+- I en blind runde får ingen andre enn verten se annet enn plassen til hvert øl før runden er avsluttet. En
+  test sjekker feltene mot en tillatt liste, og den må utvides når nye felter kommer.
 
 ## Tasks
 

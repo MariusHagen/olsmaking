@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | pending |
+| Status | in-progress |
 | Created | 2026-11-12 |
 | Completed | - |
 | Henger sammen med | [001](001-olsmaking-planlegger.md) (planleggeren), [004](completed/004-butikksok-alkoholfrie-og-juletema.md) |
@@ -125,23 +125,23 @@ Det gir plass til rundt 75 runder i måneden, delt med det lunsjprosjektet bruke
 
 ## Acceptance Criteria
 
-- [ ] API-testene i `tests/` kjøres av `tools/verifiser.sh` og dekker: lage runde, bli med, gi og endre
+- [x] API-testene i `tests/` kjøres av `tools/verifiser.sh` og dekker: lage runde, bli med, gi og endre
   karakter, resultater, avslutning, grensene, at bare vertnøkkelen avslutter, at en deltaker bare kan endre
   sine egne karakterer, at karakterer avvises etter avslutningen, og at alle nøkler har prefikset
   `olsmaking:` og levetid
-- [ ] En blind runde svarer bare med felter fra en tillatt liste før avslutningen, i alle ruter, og testen er
+- [x] En blind runde svarer bare med felter fra en tillatt liste før avslutningen, i alle ruter, og testen er
   sett feile på et bevisst brudd
-- [ ] Ugyldig kode, kall over grensen per instans og nødbryteren gir 404, 429 og 503 uten et eneste kall til
+- [x] Ugyldig kode, kall over grensen per instans og nødbryteren gir 404, 429 og 503 uten et eneste kall til
   lageret, talt i minnelageret
-- [ ] En test teller Redis-kommandoene i en simulert runde (15 personer, 10 øl, 90 minutter, storskjerm hvert
+- [x] En test teller Redis-kommandoene i en simulert runde (15 personer, 10 øl, 90 minutter, storskjerm hvert
   5. sekund, deltakere hvert 20. sekund i den siste timen), og de er under 8 000
-- [ ] Playwright lokalt mot `tools/lokal-api.mjs`, som et verktøy utenfor `verifiser.sh`: verten starter en
+- [x] Playwright lokalt mot `tools/lokal-api.mjs`, som et verktøy utenfor `verifiser.sh`: verten starter en
   blind runde, tre deltakere i hver sin nettleser rater, storskjermen oppdateres, og avslutningen viser
   navnene hos alle
-- [ ] «Skriv ut» og «Lagre som bilde» prøvd i Chrome: bildet har alle ølene med snitt og Untappd
+- [x] «Skriv ut» og «Lagre som bilde» prøvd i Chrome: bildet har alle ølene med snitt og Untappd
 - [ ] Prøvd mot Vercel og Upstash med to telefoner
-- [ ] Skjermbilder av deltakersiden i 360 px og storskjermen i 1280 px, lyst og mørkt tema
-- [ ] `README.md`, `CLAUDE.md` og `docs/deploy.md` er oppdatert
+- [x] Skjermbilder av deltakersiden i 360 px og storskjermen i 1280 px, lyst og mørkt tema
+- [x] `README.md`, `CLAUDE.md` og `docs/deploy.md` er oppdatert
 
 ## Notes
 

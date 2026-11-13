@@ -18,6 +18,21 @@ Du får:
 - en lenke til rekka som kan deles: den viser de samme ølene, med dagens pris og lager
 - hele hylla i butikken, med søk og filter
 
+## Smakerunde
+
+Under rekka kan du starte en smakerunde. Du får en kode og en lenke som du deler med de andre, og en side for
+storskjerm. Alle blir med på mobilen med et kallenavn og gir hvert øl 1 til 5 stjerner i halve steg, med en
+valgfri kommentar. Storskjermen viser snittet per øl mens dere smaker. Når du avslutter, kommer kontorets
+favoritt, det mest omstridte ølet, den største overraskelsen og hvem som var mest enig med Untappd, og
+resultatet kan skrives ut eller lagres som bilde.
+
+Velger du blindsmaking, ser deltakerne bare «Øl 1», «Øl 2» til du avslutter. Du får en skjenkeliste over
+hvilken flaske som er hvilket nummer.
+
+**Hva som lagres:** kallenavnet, karakterene og kommentarene dine, i sju dager etter siste endring i runden.
+Så slettes alt. Vi lagrer ikke IP-adresser selv, men tjenestene vi bruker (Vercel og Upstash) fører egne
+logger. Koden på seks tegn er det eneste som beskytter en runde, så alle som har koden, kan se resultatet.
+
 ## Hvor dataene kommer fra
 
 Alt kommer fra [Ølmonopolet](https://www.olmonopolet.app), som henter lager og priser fra Vinmonopolet og
@@ -36,6 +51,7 @@ Krever `python3` og `node`, ingen andre avhengigheter.
 ```bash
 python3 juleol.py                       # henter data til site/data/juleol.json (ett kall)
 python3 -m http.server -d site 8000     # siden på http://localhost:8000
+node tools/lokal-api.mjs                # smakerunden lokalt på port 8787, med minnelager
 tools/verifiser.sh                      # alle testene
 ```
 
@@ -47,3 +63,6 @@ den i hemmeligheten `OLMONOPOLET_API_KEY`.
 
 GitHub slår av nattlige jobber i offentlige repoer etter 60 dager uten aktivitet. Før neste juleølsesong
 slås den på igjen under «Actions».
+
+API-et for smakerunden er et eget Vercel-prosjekt. Oppsettet, røyktesten og nødbryteren står i
+[docs/deploy.md](docs/deploy.md).

@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Storskjerm · Ølsmaking</title>
+<meta name="theme-color" content="#133328">
+<link rel="stylesheet" href="felles.css">
+<style>
+/* Storskjermen: koden og lenken øverst, så én søyle per øl, sammendraget etter avslutningen. */
+.wrap { max-width: 72rem; }
+.hode-innhold { max-width: 72rem; padding-block: 14px 40px; }
+.kode-boks { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: baseline; }
+.kode { font: 800 clamp(2.6rem, 8vw, 4.6rem)/1 var(--display); letter-spacing: .12em; color: var(--gull-lys); }
+.lenke { color: var(--hode-ink); font-size: 1.05rem; overflow-wrap: anywhere; }
+.julehode .knapp { background: transparent; color: var(--hode-ink); border-color: rgba(255, 255, 255, .35); }
+.kort { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; }
+.topp { margin-top: -24px; position: relative; box-shadow: 0 10px 30px -18px rgba(10, 30, 22, .45);
+  display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
+.tall { font: 800 1.6rem var(--display); font-variant-numeric: tabular-nums; }
+.feil { color: var(--danger); font-weight: 600; }
+.soyler { display: grid; gap: 14px; }
+.soyle { display: grid; grid-template-columns: minmax(7rem, 16rem) minmax(0, 1fr) 5.5rem; gap: 14px; align-items: center; }
+.soyle .navn { font-weight: 600; overflow-wrap: anywhere; }
+.soyle .navn small { display: block; font-weight: 400; color: var(--muted); font-size: .8rem; }
+.bane { position: relative; height: 28px; background: var(--accent-soft); border-radius: 8px; }
+.fyll { position: absolute; inset: 0 auto 0 0; background: var(--rod); border-radius: 8px; transition: width .4s ease; }
+.untappd { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--gull); border-radius: 2px; }
+.snitt { font: 800 1.3rem var(--display); font-variant-numeric: tabular-nums; text-align: right; }
+.snitt small { display: block; font: 400 .78rem var(--body); color: var(--muted); }
+.forklaring { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .85rem; color: var(--muted); }
+.forklaring i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+.oppsummering { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 14px; }
+.oppsummering .kort { gap: 6px; }
+.oppsummering .etikett { font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--rod); }
+.oppsummering b { font: 700 1.1rem var(--display); }
+.kommentarer { display: grid; gap: 10px; }
+.kommentarer h3 { font-size: 1rem; }
+.kommentarer ul { margin: 0; padding-left: 1.2rem; display: grid; gap: 4px; }
+.knapper { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+details summary { cursor: pointer; font-weight: 600; color: var(--rod); }
+details ol { margin: 10px 0 0; padding-left: 1.4rem; display: grid; gap: 4px; }
+@media (max-width: 640px) { .soyle { grid-template-columns: minmax(0, 1fr) 4.5rem; } .bane { grid-column: 1 / -1; grid-row: 2; } }
+@media print {
+  .julehode canvas, .julelys, .knapper, .ikke-utskrift, details { display: none !important; }
+  .julehode { background: none; color: #000; }
+  .kode { color: #000; }
+  body { background: #fff; }
+  .kort { box-shadow: none; break-inside: avoid; }
+  .fyll { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+<header class="julehode">
+  <canvas id="sno" aria-hidden="true"></canvas>
+  <div class="julelys" aria-hidden="true"></div>
+  <div class="hode-innhold sider">
+    <p class="eyebrow" id="undertittel">Smakerunde</p>
+    <div class="kode-boks">
+      <span class="kode" id="kode" aria-label="Koden til runden"></span>
+      <span class="lenke" id="lenke"></span>
+      <button type="button" class="knapp ikke-utskrift" id="kopier">Kopier lenken</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap sider">
+  <section class="kort topp">
+    <div><span class="tall" id="har-ratet">0</span> <span id="har-ratet-tekst">har ratet</span></div>
+    <p id="status" role="status"></p>
+    <div class="knapper">
+      <button type="button" class="knapp primar" id="avslutt" hidden>Avslutt runden</button>
+      <button type="button" class="knapp" id="skriv-ut" hidden>Skriv ut</button>
+      <button type="button" class="knapp" id="bilde" hidden>Lagre som bilde</button>
+    </div>
+  </section>
+  <p class="feil" id="feil" role="alert" hidden></p>
+
+  <details class="kort" id="skjenkeliste" hidden>
+    <summary>Skjenkeliste for verten</summary>
+    <ol id="skjenk"></ol>
+  </details>
+
+  <section class="section" aria-labelledby="res-h">
+    <h2 class="stjerne" id="res-h">Resultatet så langt</h2>
+    <div class="forklaring"><span><i style="background:var(--rod)"></i>Kontorets snitt</span><span id="untappd-forkl" hidden><i style="background:var(--gull);width:4px"></i>Untappd</span></div>
+    <div class="soyler" id="soyler"></div>
+  </section>
+
+  <section class="section" id="sammendrag" hidden>
+    <h2 class="stjerne">Sammendrag</h2>
+    <div class="oppsummering" id="oppsummering"></div>
+    <div class="kommentarer" id="kommentarer"></div>
+  </section>
+  <footer><p class="hilsen">God jul, og drikk med måte.</p></footer>
+</main>
+
+<script type="module">
+import { api, poll, esc, nf2, huskLes } from "./oppsett.mjs";
+import { sno } from "./sno.mjs";
+
+const $ = (id) => document.getElementById(id);
+const kode = (location.hash.slice(1) || "").toUpperCase();
+const vertNokkel = huskLes(`olsmaking.vert.${kode}`);
+const deltakerLenke = new URL(`smak.html#${kode}`, location.href).href;
+let runde = null, res = null, bekreft = false;
+
+function visFeil(tekst) {
+  $("feil").textContent = tekst;
+  $("feil").hidden = !tekst;
+}
+
+async function start() {
+  sno();
+  $("kode").textContent = kode;
+  $("lenke").textContent = deltakerLenke.replace(/^https?:\/\//, "");
+  try {
+    runde = await api(`/${kode}`, { hoder: vertNokkel ? { "X-Vertnokkel": vertNokkel } : {} });
+  } catch (e) {
+    return visFeil(e.message);
+  }
+  $("avslutt").hidden = !vertNokkel || runde.avsluttet;
+  $("avslutt").textContent = runde.blind ? "Avslør og avslutt" : "Avslutt runden";
+  $("undertittel").textContent = `Smakerunde · ${runde.ol.length} øl${runde.blind ? " · blind" : ""}`;
+  if (vertNokkel && runde.ol[0]?.navn) {
+    $("skjenkeliste").hidden = false;
+    $("skjenk").innerHTML = runde.ol.map((o) => `<li>${esc(o.navn)} <span class="hjelp">${esc(o.stil ?? "")}</span></li>`).join("");
+  }
+  poll(async () => {
+    res = await api(`/${kode}/resultater`);
+    tegn();
+    if (res.avsluttet) return "stopp";
+  }, 5000);
+}
+
+function tegn() {
+  const visAlt = !res.blind || res.avsluttet;
+  const navn = Object.fromEntries((runde?.ol ?? []).map((o) => [o.plass, o]));
+  $("har-ratet").textContent = res.harRatet;
+  $("har-ratet-tekst").textContent = res.harRatet === 1 ? "har ratet" : "har ratet";
+  $("res-h").textContent = res.avsluttet ? "Resultatet" : "Resultatet så langt";
+  $("status").textContent = res.avsluttet ? "Runden er avsluttet." : `Deltakerne blir med på lenken eller med koden ${kode}.`;
+  $("untappd-forkl").hidden = !visAlt;
+  $("skriv-ut").hidden = $("bilde").hidden = !res.avsluttet;
+  $("avslutt").hidden = !vertNokkel || res.avsluttet;
+  $("soyler").innerHTML = res.ol.map((o) => {
+    const tittel = visAlt && o.navn ? `${esc(o.navn)}<small>Øl ${o.plass} · ${esc(o.gruppe ?? "")}</small>` : `Øl ${o.plass}`;
+    const bredde = o.snitt ? (o.snitt / 5) * 100 : 0;
+    const merke = visAlt && o.score != null ? `<span class="untappd" style="left:calc(${(o.score / 5) * 100}% - 1.5px)" title="Untappd ${nf2.format(o.score)}"></span>` : "";
+    return `<div class="soyle"><div class="navn">${tittel}</div>
+      <div class="bane" role="img" aria-label="Snitt ${o.snitt ? nf2.format(o.snitt) : "ingen ennå"}${visAlt && o.score != null ? `, Untappd ${nf2.format(o.score)}` : ""}">
+        <span class="fyll" style="width:${bredde}%"></span>${merke}</div>
+      <div class="snitt">${o.snitt ? nf2.format(o.snitt) : "–"}<small>${o.antall} ${o.antall === 1 ? "karakter" : "karakterer"}${visAlt && o.score != null ? ` · U ${nf2.format(o.score)}` : ""}</small></div></div>`;
+  }).join("");
+
+  $("sammendrag").hidden = !res.sammendrag;
+  if (res.sammendrag) {
+    const s = res.sammendrag;
+    const kort = (etikett, hoved, tekst) => `<div class="kort"><span class="etikett">${etikett}</span><b>${hoved}</b><span class="hjelp">${tekst}</span></div>`;
+    $("oppsummering").innerHTML = [
+      s.favoritt && kort("Kontorets favoritt", esc(s.favoritt.navn), `Snitt ${nf2.format(s.favoritt.snitt)}`),
+      s.omstridt && kort("Mest omstridt", esc(s.omstridt.navn), `Spredning ${nf2.format(s.omstridt.spredning)} stjerner`),
+      s.overraskelse && kort("Største overraskelse", esc(s.overraskelse.navn),
+        `${s.overraskelse.forskjell > 0 ? "Likt bedre" : "Likt dårligere"} enn Untappd med ${nf2.format(Math.abs(s.overraskelse.forskjell))}`),
+      s.untappdVenn && kort("Mest enig med Untappd", esc(s.untappdVenn.kallenavn), `Bommet i snitt med ${nf2.format(s.untappdVenn.avvik)} stjerner`),
+    ].filter(Boolean).join("");
+    $("kommentarer").innerHTML = res.ol.filter((o) => o.karakterer?.some((k) => k.kommentar)).map((o) => `<div>
+      <h3>${esc(o.navn)}</h3><ul>${o.karakterer.filter((k) => k.kommentar).map((k) => `<li><b>${esc(k.kallenavn)}</b> (${nf2.format(k.stjerner)}): ${esc(k.kommentar)}</li>`).join("")}</ul></div>`).join("");
+  }
+}
+
+$("kopier").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(deltakerLenke);
+    $("kopier").textContent = "Kopiert";
+  } catch {
+    $("kopier").textContent = "Kopier selv";
+  }
+});
+
+$("avslutt").addEventListener("click", async () => {
+  // To trykk, så runden ikke avsluttes ved et uhell.
+  if (!bekreft) {
+    bekreft = true;
+    $("avslutt").textContent = "Sikker? Trykk igjen";
+    setTimeout(() => { bekreft = false; if (!res?.avsluttet) $("avslutt").textContent = runde.blind ? "Avslør og avslutt" : "Avslutt runden"; }, 4000);
+    return;
+  }
+  try {
+    runde = await api(`/${kode}/avslutt`, { metode: "POST", body: { vertNokkel } });
+    res = await api(`/${kode}/resultater`);
+    tegn();
+  } catch (e) {
+    visFeil(e.message);
+  }
+});
+
+$("skriv-ut").addEventListener("click", () => window.print());
+
+// Korter av teksten med «…» så den får plass i bredden.
+function tilpass(g, tekst, bredde) {
+  if (g.measureText(tekst).width <= bredde) return tekst;
+  let t = tekst;
+  while (t.length > 1 && g.measureText(`${t}…`).width > bredde) t = t.slice(0, -1);
+  return `${t.trimEnd()}…`;
+}
+
+/* Resultatet som et PNG-bilde, tegnet i nettleseren, så det kan tas vare på etter at runden er slettet. */
+$("bilde").addEventListener("click", () => {
+  const rader = res.ol;
+  const B = 1200, topp = 150, radH = 64, s = res.sammendrag;
+  const sammenH = s ? 150 : 0;
+  const c = document.createElement("canvas");
+  c.width = B; c.height = topp + rader.length * radH + sammenH + 60;
+  const g = c.getContext("2d");
+  const font = (st, w = 400) => `${w} ${st}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+  g.fillStyle = "#133328"; g.fillRect(0, 0, B, c.height);
+  g.fillStyle = "#EBC765"; g.font = font(18, 600);
+  g.fillText(`SMAKERUNDE ${kode} · ${new Date(runde.opprettet).toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" })}`, 48, 60);
+  g.fillStyle = "#F4F1E8"; g.font = font(40, 800); g.fillText("Kontorets juleølsmaking", 48, 112);
+  rader.forEach((o, i) => {
+    const y = topp + i * radH;
+    g.fillStyle = "#F4F1E8"; g.font = font(20, 600);
+    g.fillText(tilpass(g, `${o.plass}. ${o.navn || `Øl ${o.plass}`}`, 430), 48, y + 26);
+    g.fillStyle = "rgba(255,255,255,.12)"; g.fillRect(500, y + 8, 520, 26);
+    g.fillStyle = "#E25858"; g.fillRect(500, y + 8, o.snitt ? (o.snitt / 5) * 520 : 0, 26);
+    if (o.score != null) { g.fillStyle = "#EBC765"; g.fillRect(500 + (o.score / 5) * 520 - 2, y + 2, 4, 38); }
+    g.fillStyle = "#F4F1E8"; g.font = font(22, 800);
+    g.fillText(o.snitt ? nf2.format(o.snitt) : "–", 1040, y + 30);
+    g.fillStyle = "#C6D4CC"; g.font = font(14);
+    g.fillText(`${o.antall} karakterer${o.score != null ? ` · Untappd ${nf2.format(o.score)}` : ""}`, 48, y + 48);
+  });
+  if (s) {
+    const y = topp + rader.length * radH + 30;
+    g.fillStyle = "#EBC765"; g.font = font(20, 700);
+    const linjer = [
+      s.favoritt && `Favoritt: ${s.favoritt.navn} (${nf2.format(s.favoritt.snitt)})`,
+      s.omstridt && `Mest omstridt: ${s.omstridt.navn}`,
+      s.overraskelse && `Største overraskelse: ${s.overraskelse.navn}`,
+      s.untappdVenn && `Mest enig med Untappd: ${s.untappdVenn.kallenavn}`,
+    ].filter(Boolean);
+    linjer.forEach((l, i) => g.fillText(tilpass(g, l, B - 96), 48, y + i * 30));
+  }
+  c.toBlob((blob) => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `smakerunde-${kode}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }, "image/png");
+});
+
+start();
+</script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Smakerunde · Ølsmaking</title>
+<meta name="theme-color" content="#133328">
+<link rel="stylesheet" href="felles.css">
+<style>
+/* Deltakersiden: én kolonne for mobil. Ett kort per øl med stjerner og kommentar. */
+.hode-innhold { padding-block: 14px 40px; }
+.kort { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: grid; gap: 12px; }
+.inngang { margin-top: -24px; position: relative; box-shadow: 0 10px 30px -18px rgba(10, 30, 22, .45); }
+.felt { display: grid; gap: 6px; }
+.felt label { font-size: .85rem; font-weight: 600; }
+.felt input, textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; width: 100%; }
+#kode-inn { text-transform: uppercase; letter-spacing: .2em; font-size: 1.3rem; font-weight: 700; max-width: 12rem; }
+.feil { color: var(--danger); font-weight: 600; }
+.liste { display: grid; gap: 14px; }
+.ol h3 { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.ol h3 .nr { color: var(--rod); font-family: var(--display); font-weight: 800; }
+.ol .stil { font-size: .88rem; color: var(--muted); }
+.stjerner { display: flex; gap: 4px; }
+.stjerner button { appearance: none; border: 0; background: none; padding: 2px; font-size: 2.2rem; line-height: 1; cursor: pointer; color: var(--line); }
+.stjerner button.full { color: var(--gull); }
+.stjerner button.halv { background: linear-gradient(90deg, var(--gull) 50%, var(--line) 50%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.stjerner button:disabled { cursor: default; }
+.rad { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.verdi { font-weight: 600; font-variant-numeric: tabular-nums; }
+.lagret { font-size: .82rem; color: var(--accent); }
+textarea { resize: vertical; min-height: 2.6rem; font-size: .95rem; }
+.sammenlign { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: .92rem; font-variant-numeric: tabular-nums; }
+.sammenlign b { color: var(--gull); }
+.vent { color: var(--muted); }
+#smaking { padding-top: 28px; }
+</style>
+</head>
+<body>
+<header class="julehode">
+  <canvas id="sno" aria-hidden="true"></canvas>
+  <div class="julelys" aria-hidden="true"></div>
+  <div class="hode-innhold sider">
+    <p class="eyebrow">Smakerunde</p>
+    <h1 id="tittel">Bli med på smakingen</h1>
+    <p class="lead" id="ingress">Gi hvert øl 1 til 5 stjerner. Trykk to ganger på samme stjerne for en halv.</p>
+  </div>
+</header>
+
+<main class="wrap sider">
+  <section class="kort inngang" id="inngang" hidden>
+    <form id="kode-skjema" class="felt" hidden>
+      <label for="kode-inn">Koden fra verten</label>
+      <input id="kode-inn" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text">
+      <button class="knapp primar" type="submit">Finn runden</button>
+    </form>
+    <form id="navn-skjema" class="felt" hidden>
+      <label for="kallenavn">Kallenavn</label>
+      <input id="kallenavn" maxlength="30" autocomplete="nickname" required>
+      <button class="knapp primar" type="submit">Bli med</button>
+      <span class="hjelp">Kallenavnet, karakterene og kommentarene dine lagres i sju dager og vises for de andre når runden er avsluttet.</span>
+    </form>
+    <p class="feil" id="feil" role="alert" hidden></p>
+  </section>
+
+  <section class="section" id="smaking" hidden>
+    <h2 class="stjerne" id="smaking-h">Ølene</h2>
+    <p id="status" role="status"></p>
+    <div class="liste" id="liste"></div>
+  </section>
+  <footer><p class="hilsen">God jul, og drikk med måte.</p></footer>
+</main>
+
+<script type="module">
+import { api, poll, esc, nf1, nf2, huskLes, huskSkriv } from "./oppsett.mjs";
+import { sno } from "./sno.mjs";
+
+const $ = (id) => document.getElementById(id);
+let kode = (location.hash.slice(1) || "").toUpperCase(), runde = null, meg = null, mine = {}, resultat = null, stoppPoll = null;
+const lagreMine = () => huskSkriv(`olsmaking.karakterer.${kode}`, mine);
+
+function visFeil(tekst) {
+  $("inngang").hidden = false;
+  $("feil").textContent = tekst;
+  $("feil").hidden = !tekst;
+}
+
+async function start() {
+  sno();
+  if (!/^[A-Z2-9]{6}$/.test(kode)) {
+    $("inngang").hidden = false;
+    $("kode-skjema").hidden = false;
+    return;
+  }
+  meg = huskLes(`olsmaking.deltaker.${kode}`);
+  mine = huskLes(`olsmaking.karakterer.${kode}`) ?? {};
+  try {
+    runde = await api(`/${kode}`);
+  } catch (e) {
+    $("kode-skjema").hidden = false;
+    return visFeil(e.message);
+  }
+  if (!meg && !runde.avsluttet) {
+    $("inngang").hidden = false;
+    $("navn-skjema").hidden = false;
+    $("ingress").textContent = `${runde.ol.length} øl${runde.blind ? ", smakt blindt" : ""}. Gi hvert av dem 1 til 5 stjerner. Trykk to ganger på samme stjerne for en halv.`;
+    return;
+  }
+  await visSmaking();
+}
+
+$("kode-skjema").addEventListener("submit", (e) => {
+  e.preventDefault();
+  kode = $("kode-inn").value.trim().toUpperCase();
+  location.hash = kode;
+  location.reload();
+});
+
+$("navn-skjema").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    const svar = await api(`/${kode}/deltaker`, { metode: "POST", body: { kallenavn: $("kallenavn").value } });
+    meg = { deltakerId: svar.deltakerId, deltakerNokkel: svar.deltakerNokkel, kallenavn: svar.kallenavn };
+    huskSkriv(`olsmaking.deltaker.${kode}`, meg);
+    runde = svar.runde;
+    $("inngang").hidden = true;
+    await visSmaking();
+  } catch (err) {
+    visFeil(err.message);
+  }
+});
+
+async function visSmaking() {
+  $("inngang").hidden = true;
+  $("smaking").hidden = false;
+  $("tittel").textContent = meg ? `Hei, ${meg.kallenavn}` : "Resultatet";
+  if (runde.avsluttet) {
+    resultat = await api(`/${kode}/resultater`);
+    runde = await api(`/${kode}`);
+  }
+  tegn();
+  if (!runde.avsluttet && meg) {
+    // Spør bare når alt er ratet, og stopp når verten har avsluttet.
+    stoppPoll = poll(async () => {
+      if (!alleRatet()) return;
+      const ny = await api(`/${kode}`);
+      if (ny.avsluttet) {
+        runde = ny;
+        resultat = await api(`/${kode}/resultater`);
+        tegn();
+        return "stopp";
+      }
+    }, 20000);
+  }
+}
+
+const alleRatet = () => runde.ol.every((o) => mine[o.plass]?.stjerner);
+
+function stjerneKnapper(plass, v, laast) {
+  return [1, 2, 3, 4, 5].map((n) => {
+    const kl = v >= n ? "full" : v === n - 0.5 ? "halv" : "";
+    return `<button type="button" class="${kl}" data-plass="${plass}" data-n="${n}" aria-label="${n} ${n === 1 ? "stjerne" : "stjerner"}" aria-pressed="${Math.ceil(v || 0) === n}" ${laast ? "disabled" : ""}>★</button>`;
+  }).join("");
+}
+
+function tegn() {
+  const laast = runde.avsluttet || !meg;
+  const res = resultat ? Object.fromEntries(resultat.ol.map((o) => [o.plass, o])) : {};
+  $("smaking-h").textContent = runde.avsluttet ? "Resultatet" : "Ølene";
+  $("status").textContent = runde.avsluttet
+    ? "Verten har avsluttet runden. Her er det du ga, kontorets snitt og Untappd."
+    : alleRatet() ? "Takk! Du har ratet alt. Resultatet kommer her når verten avslutter." : runde.blind ? "Navnene er skjult til verten avslutter runden." : "";
+  $("liste").innerHTML = runde.ol.map((o) => {
+    const min = mine[o.plass] ?? {};
+    const r = res[o.plass];
+    const navn = o.navn ? `<span>${esc(o.navn)}</span>` : "";
+    return `<article class="kort ol" id="ol-${o.plass}">
+      <h3><span class="nr">Øl ${o.plass}</span>${navn}</h3>
+      ${o.stil ? `<span class="stil">${esc(o.gruppe)} · ${esc(o.stil)}${o.alkohol ? ` · ${nf1.format(o.alkohol)} %` : ""}</span>` : ""}
+      <div class="rad">
+        <div class="stjerner" role="group" aria-label="Stjerner for øl ${o.plass}">${stjerneKnapper(o.plass, min.stjerner, laast)}</div>
+        <span class="verdi">${min.stjerner ? `${nf1.format(min.stjerner)} av 5` : "Ikke ratet"}</span>
+        <span class="lagret" id="lagret-${o.plass}" role="status"></span>
+      </div>
+      ${laast ? (min.kommentar ? `<p>«${esc(min.kommentar)}»</p>` : "")
+        : `<label class="hjelp" for="kom-${o.plass}">Kommentar (valgfri)</label>
+           <textarea id="kom-${o.plass}" data-plass="${o.plass}" maxlength="140" rows="2">${esc(min.kommentar ?? "")}</textarea>`}
+      ${r && r.snitt != null ? `<div class="sammenlign"><span>Du: <b>${min.stjerner ? nf1.format(min.stjerner) : "–"}</b></span>
+        <span>Kontoret: <b>${nf2.format(r.snitt)}</b> (${r.antall})</span><span>Untappd: <b>${r.score != null ? nf2.format(r.score) : "–"}</b></span></div>` : ""}
+    </article>`;
+  }).join("");
+}
+
+async function lagre(plass) {
+  const min = mine[plass];
+  if (!min?.stjerner || !meg) return;
+  $(`lagret-${plass}`).textContent = "Lagrer …";
+  try {
+    await api(`/${kode}/karakter`, { metode: "PUT", body: { ...meg, plass, stjerner: min.stjerner, kommentar: min.kommentar ?? "" } });
+    $(`lagret-${plass}`).textContent = "Lagret";
+  } catch (e) {
+    $(`lagret-${plass}`).textContent = e.message;
+    if (e.status === 409) {
+      runde = await api(`/${kode}`);
+      tegn();
+    }
+  }
+}
+
+$("liste").addEventListener("click", (e) => {
+  const b = e.target.closest(".stjerner button");
+  if (!b || b.disabled) return;
+  const plass = Number(b.dataset.plass), n = Number(b.dataset.n);
+  const for_ = mine[plass]?.stjerner;
+  // Samme stjerne en gang til gir en halv mindre, men aldri under 1.
+  const ny = for_ === n && n > 1 ? n - 0.5 : n;
+  mine[plass] = { ...mine[plass], stjerner: ny };
+  lagreMine();
+  const kommentar = $(`kom-${plass}`)?.value;
+  if (kommentar !== undefined) mine[plass].kommentar = kommentar;
+  tegn();
+  document.querySelector(`#ol-${plass} .stjerner button[data-n="${n}"]`)?.focus();
+  lagre(plass);
+});
+$("liste").addEventListener("change", (e) => {
+  const t = e.target.closest("textarea[data-plass]");
+  if (!t) return;
+  const plass = Number(t.dataset.plass);
+  mine[plass] = { ...mine[plass], kommentar: t.value };
+  lagreMine();
+  lagre(plass);
+});
+
+start();
+</script>
+</body>
+</html>
