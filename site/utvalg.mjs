@@ -193,7 +193,12 @@ export function velg(data, valg) {
   // De beste alkoholfrie først. Går ikke rekka opp da, prøves billigere alkoholfrie, og så færre.
   // De låste alkoholfrie er med i alle forsøkene, og bare de ledige plassene prøves.
   const forsok = [];
-  for (let k = Math.min(onsket - lasteAf.length, af.length); k >= 0; k--) forsok.push(besteSomPasser(k), etterKostnad.slice(0, k));
+  // De beste som passer, teller bare når det ble så mange som ønsket; ellers går forsøket med de billigste først.
+  for (let k = Math.min(onsket - lasteAf.length, af.length); k >= 0; k--) {
+    const beste = besteSomPasser(k);
+    if (beste.length === k) forsok.push(beste);
+    forsok.push(etterKostnad.slice(0, k));
+  }
   let forste = null;
   for (const ledige of forsok) {
     const alkoholfrie = [...lasteAf, ...ledige];
@@ -230,8 +235,13 @@ function rekkeFor(data, valg, alle, budsjett, laste = []) {
   }
   // Grensen regnes for hele rekka, med de låste, og er aldri lavere enn de låste av én type.
   const fulle = typer.map((g, i) => lister[i].length + lastI(g)).filter((x) => x > 0).map((x) => ({ length: x }));
-  const maks = Math.max(fulle.length ? maksPerGruppe(fulle, valg.antall) : 1, ...laste.map((o) => lastI(o.gruppe)));
-  if (n === 0) return { rekke: ordne([...laste]), maksPerType: maks, feil: null };
+  // Låste øl fra typer som ikke er valgt, tar plasser, men hører ikke til noen av de valgte typene.
+  const iValgte = valg.antall - laste.filter((o) => !typer.includes(o.gruppe)).length;
+  const maks = Math.max(fulle.length ? maksPerGruppe(fulle, iValgte) : 1, ...laste.map((o) => lastI(o.gruppe)));
+  if (n === 0) {
+    if (lastKost > budsjett) return { rekke: [], minstBudsjett: lastKost, feil: "budsjett" };
+    return { rekke: ordne([...laste]), maksPerType: maks, feil: null };
+  }
   const med = typer.map((g, i) => ({ liste: lister[i], grense: maks - lastI(g) })).filter((x) => x.liste.length > 0 && x.grense > 0);
   const grenser = med.map((x) => x.grense);
   const grupper = med.map((x) => utenDominerte(x.liste, x.grense));

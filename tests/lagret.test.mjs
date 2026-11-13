@@ -39,6 +39,7 @@ test("ødelagte eller ukjente data gir ingen lagret rekke", () => {
     ["antall som tekst", endret((v) => { v.valg.antall = "8"; return v; })],
     ["tom rekke", endret((v) => ({ ...v, rekke: [] }))],
     ["øl uten varenummer", endret((v) => { v.rekke[0].id = ""; return v; })],
+    ["varenummer med HTML", endret((v) => { v.rekke[0].id = '1"/><img src=x onerror=alert(1)>'; return v; })],
     ["pris som tekst", endret((v) => { v.rekke[0].pris = "129,90"; return v; })],
     ["lenke til et annet sted", endret((v) => { v.rekke[0].polet = "javascript:alert(1)"; return v; })],
   ]) {

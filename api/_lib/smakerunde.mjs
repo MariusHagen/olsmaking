@@ -213,7 +213,9 @@ async function giKarakter({ request, lager, kode }) {
 }
 
 // Verten avslører ett øl: karakterene for det låses, og navnet, snittet og karakterene blir synlige for alle.
-// Bare verten skriver runden, så to samtidige avsløringer er det eneste som kan miste en endring.
+// Bare verten skriver runden, så bare verten selv kan miste en endring: to avsløringer, eller en avsløring og
+// en avslutning, fra to skjermer i samme øyeblikk. En karakter som er underveis i det ølet avsløres, kan komme
+// med i snittet.
 async function avslor({ request, lager, kode }) {
   const inn = await lesJson(request);
   const [r] = await hentRundeEllerFeil(lager, kode);

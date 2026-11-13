@@ -323,3 +323,21 @@ test("for mange eller for dyre låste øl gir en feilmelding", () => {
   const dyrt = velg(data, { butikk: TORG, personer: 5, budsjett: 300, antall: 8, laste: forst.rekke.slice(0, 4) });
   assert.match(dyrt.feil, /koster \d+ kr, mer enn budsjettet/);
 });
+
+test("med alle plassene låst velges alkoholfrie som passer, og rekka holder budsjettet", () => {
+  const [lys] = data.rekkefolge;
+  const ol = (id, gruppe, pris, score) => ({ id, navn: id, gruppe, stil: "", score, innsjekker: 500, alkohol: gruppe === "Alkoholfritt" ? 0 : 5,
+    cl: 50, pris, nett: true, lager: { 0: 99 } });
+  const syn = { butikker: ["A"], rekkefolge: data.rekkefolge, ol: [ol("lys", lys, 30, 4), ol("A", "Alkoholfritt", 45, 4), ol("B", "Alkoholfritt", 20, 3), ol("C", "Alkoholfritt", 20, 3)] };
+  const valg = { butikk: "A", personer: 2, antall: 1, alkoholfrie: 2, typer: [lys] };
+  const laste = [syn.ol[0]];
+  // De to beste som passer, er ikke A og en til, men B og C.
+  const r = velg(syn, { ...valg, budsjett: 80, laste });
+  assert.equal(r.feil, null);
+  assert.deepEqual(r.alkoholfrie.map((o) => o.id).sort(), ["B", "C"]);
+  // Er det bare plass til de låste, blir det ingen alkoholfrie, og aldri over budsjettet.
+  for (const budsjett of [30, 40, 55, 70, 100]) {
+    const b = velg(syn, { ...valg, budsjett, laste });
+    if (!b.feil) assert.ok(pris(b) <= budsjett, `${budsjett} kr: rekka koster ${pris(b)}`);
+  }
+});

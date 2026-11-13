@@ -19,7 +19,7 @@ function plukk(o) {
 }
 
 const gyldigOl = (o) => typeof o === "object" && o !== null
-  && TEKST.every((f) => typeof o[f] === "string") && o.id !== ""
+  && TEKST.every((f) => typeof o[f] === "string") && /^[0-9A-Za-z_-]{1,20}$/.test(o.id)
   && TALL.every((f) => Number.isFinite(o[f]))
   && KANSKJE_TALL.every((f) => o[f] === null || Number.isFinite(o[f]))
   && Object.entries(LENKER).every(([f, start]) => o[f] === "" || (typeof o[f] === "string" && o[f].startsWith(start)));

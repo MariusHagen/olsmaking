@@ -141,28 +141,28 @@ kommandoer i Upstash. Med 30 sekunder og antall deltakere i resultatene blir det
 
 ## Acceptance Criteria
 
-- [ ] Testene for `velg` dekker: låste øl er med når antall personer, budsjett og antall endres, de teller i
+- [x] Testene for `velg` dekker: låste øl er med når antall personer, budsjett og antall endres, de teller i
   grensen per type og i budsjettet, flere låste av én type enn grensen, alle plasser låst, et låst øl som
   mangler i dataene, låste alkoholfrie, og for mange eller for dyre låste øl gir en feilmelding. Testen for at
   låste øl er med, er sett feile på et bevisst brudd
-- [ ] Testene for `site/lagret.mjs` dekker: det som lagres, kommer uendret tilbake uten lagerstatus, og
+- [x] Testene for `site/lagret.mjs` dekker: det som lagres, kommer uendret tilbake uten lagerstatus, og
   ødelagte data gir ingen lagret rekke
-- [ ] En lagret rekke vises uendret etter at et av ølene er fjernet fra dataene, prøvd med Playwright
-- [ ] API-testene dekker avsløringen: bare vertnøkkelen avslører, ukjent plass, avsluttet runde, karakter på
+- [x] En lagret rekke vises uendret etter at et av ølene er fjernet fra dataene, prøvd med Playwright
+- [x] API-testene dekker avsløringen: bare vertnøkkelen avslører, ukjent plass, avsluttet runde, karakter på
   et avslørt øl avvises, og avslutningen avslører resten
-- [ ] Testen av tillatte felter i en blind runde kjøres etter at ett øl er avslørt og sjekker hvert øl for seg
+- [x] Testen av tillatte felter i en blind runde kjøres etter at ett øl er avslørt og sjekker hvert øl for seg
   i alle ruter: det avslørte har alt, de andre bare plassen, og bare plass og antall i resultatene. Testen er
   sett feile på et bevisst brudd
-- [ ] I en åpen runde har resultatene for et øl som ikke er avslørt, ikke snitt eller karakterer, og testen er
+- [x] I en åpen runde har resultatene for et øl som ikke er avslørt, ikke snitt eller karakterer, og testen er
   sett feile på et bevisst brudd
-- [ ] Testen som teller kommandoene i en simulert runde, har den nye pollingen og avsløringene og er under
+- [x] Testen som teller kommandoene i en simulert runde, har den nye pollingen og avsløringene og er under
   8 000
-- [ ] Playwright lokalt: verten starter en blind runde, tre deltakere rater, verten avslører øl 1, og
+- [x] Playwright lokalt: verten starter en blind runde, tre deltakere rater, verten avslører øl 1, og
   deltakerne ser navn og snitt bare for øl 1 og har låste stjerner der
-- [ ] Skjermbilder: hovedsiden med låste øl og med en lagret rekke i 360 px, storskjermen etter én avsløring i
+- [x] Skjermbilder: hovedsiden med låste øl og med en lagret rekke i 360 px, storskjermen etter én avsløring i
   1280 px og deltakersiden med ett avslørt øl i 360 px, lyst og mørkt, pluss utskriften
-- [ ] De tre småfeilene er rettet og synes på skjermbildene og i utskriften
-- [ ] `README.md`, `CLAUDE.md` og `docs/deploy.md` er oppdatert
+- [x] De tre småfeilene er rettet og synes på skjermbildene og i utskriften
+- [x] `README.md`, `CLAUDE.md` og `docs/deploy.md` er oppdatert
 
 ## Notes
 

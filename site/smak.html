@@ -147,8 +147,10 @@ async function visSmaking() {
     stoppPoll = poll(async () => {
       const ny = await api(`/${kode}`);
       if (ny.avsluttet === runde.avsluttet && (ny.avslort ?? []).length === (runde.avslort ?? []).length) return;
+      // Resultatene først: feiler kallet, prøver neste runde igjen, siden runden da ikke er byttet ut.
+      const nyttResultat = await api(`/${kode}/resultater`);
       runde = ny;
-      resultat = await api(`/${kode}/resultater`);
+      resultat = nyttResultat;
       tegnOgBehold();
       if (ny.avsluttet) return "stopp";
     }, 30000);
