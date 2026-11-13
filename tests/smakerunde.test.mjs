@@ -43,8 +43,11 @@ test("lage runde, bli med, gi og endre karakter, se resultater og avslutte", asy
   assert.equal((await rate(o, kode, b, 1, 3.5)).status, 200);
   const res = (await o.kall("GET", `/${kode}/resultater`)).body;
   assert.equal(res.ol[0].antall, 2);
-  assert.equal(res.ol[0].snitt, 4);
+  assert.equal(res.ol[0].snitt, undefined, "snittet kommer først når ølet er avslørt");
   assert.equal(res.harRatet, 2);
+  assert.equal(res.deltakere, 2);
+  assert.equal((await o.kall("POST", `/${kode}/avslor`, { vertNokkel, plass: 1 })).status, 200);
+  assert.equal((await o.kall("GET", `/${kode}/resultater`)).body.ol[0].snitt, 4);
 
   assert.equal((await o.kall("POST", `/${kode}/avslutt`, { vertNokkel: "feil" })).status, 403);
   const slutt = await o.kall("POST", `/${kode}/avslutt`, { vertNokkel });
@@ -117,7 +120,7 @@ test("alle nøkler har prefikset og levetid, og lageret avviser nøkler uten pre
   assert.equal((await o.kall("GET", `/${kode}`)).status, 404, "slettet etter sju dager uten endring");
 });
 
-test("en blind runde svarer bare med tillatte felter før avslutningen, i alle ruter", async () => {
+test("en blind runde svarer bare med tillatte felter for øl som ikke er avslørt, i alle ruter", async () => {
   const o = oppsett();
   const ny = await o.kall("POST", "", { ol: OL, blind: true });
   const { kode, vertNokkel } = ny.body;
@@ -126,24 +129,77 @@ test("en blind runde svarer bare med tillatte felter før avslutningen, i alle r
   const svar = [
     (await o.kall("GET", `/${kode}`)).body,
     d.runde,
-    (await rate(o, kode, d, 2, 3)).body,
+    (await rate(o, kode, d, 2, 3, "Litt søt")).body,
     (await o.kall("GET", `/${kode}/resultater`)).body,
   ];
-  const TOPP = new Set(["kode", "blind", "avsluttet", "opprettet", "ol", "harRatet", "ok"]);
-  const OL_FELT = new Set(["plass", "antall", "snitt", "min", "maks", "spredning"]);
-  for (const s of svar) {
+  // Verten avslører øl 1. Det har da alt, og de andre fortsatt bare plassen.
+  assert.equal((await o.kall("POST", `/${kode}/avslor`, { vertNokkel, plass: 1 })).status, 200);
+  const etter = [(await o.kall("GET", `/${kode}`)).body, (await o.kall("GET", `/${kode}/resultater`)).body];
+  assert.equal(etter[0].ol[0].navn, "Juleøl nummer 1");
+  assert.equal(etter[1].ol[0].snitt, 4);
+  assert.equal(etter[1].ol[0].karakterer[0].kallenavn, "Kari");
+  const TOPP = new Set(["kode", "blind", "avsluttet", "opprettet", "avslort", "ol", "harRatet", "deltakere", "ok"]);
+  const RUNDE_FELT = new Set(["plass"]);
+  const RESULTAT_FELT = new Set(["plass", "antall"]);
+  for (const s of [...svar, ...etter]) {
     for (const k of Object.keys(s)) assert.ok(TOPP.has(k), `ulovlig felt ${k}`);
-    for (const ol of s.ol ?? []) for (const k of Object.keys(ol)) assert.ok(OL_FELT.has(k), `ulovlig felt ${k} på øl`);
-    const json = JSON.stringify(s);
-    for (const lekk of ["Juleøl", "Bock", "vinmonopolet", "Kari", "Smaker jul", "3.1"]) assert.ok(!json.includes(lekk), `${lekk} i ${json}`);
+    const skjulte = (s.ol ?? []).filter((ol) => !s.avslort.includes(ol.plass));
+    const tillatt = "harRatet" in s ? RESULTAT_FELT : RUNDE_FELT;
+    for (const ol of skjulte) for (const k of Object.keys(ol)) assert.ok(tillatt.has(k), `ulovlig felt ${k} på øl ${ol.plass}`);
+    const json = JSON.stringify({ ...s, ol: skjulte });
+    for (const lekk of ["Juleøl", "Bock", "vinmonopolet", "Kari", "Smaker jul", "Litt søt", "3.1"]) assert.ok(!json.includes(lekk), `${lekk} i ${json}`);
   }
+  assert.equal(etter[0].ol.filter((ol) => ol.navn).length, 1, "bare det avslørte ølet har navn");
   // Verten får alt med nøkkelen, og etter avslutningen får alle navnene.
   const vert = (await o.kall("GET", `/${kode}`, undefined, { "x-vertnokkel": vertNokkel })).body;
-  assert.equal(vert.ol[0].navn, "Juleøl nummer 1");
-  assert.equal((await o.kall("GET", `/${kode}`, undefined, { "x-vertnokkel": "feil" })).body.ol[0].navn, undefined);
+  assert.equal(vert.ol[1].navn, "Juleøl nummer 2");
+  assert.equal((await o.kall("GET", `/${kode}`, undefined, { "x-vertnokkel": "feil" })).body.ol[1].navn, undefined);
   await o.kall("POST", `/${kode}/avslutt`, { vertNokkel });
-  assert.equal((await o.kall("GET", `/${kode}`)).body.ol[0].navn, "Juleøl nummer 1");
-  assert.equal((await o.kall("GET", `/${kode}/resultater`)).body.ol[0].karakterer[0].kallenavn, "Kari");
+  assert.equal((await o.kall("GET", `/${kode}`)).body.ol[1].navn, "Juleøl nummer 2");
+  assert.equal((await o.kall("GET", `/${kode}/resultater`)).body.ol[1].karakterer[0].kommentar, "Litt søt");
+});
+
+test("bare verten avslører, karakterene låses for det avslørte ølet, og avslutningen avslører resten", async () => {
+  const o = oppsett();
+  const { kode, vertNokkel, deltakere: [a] } = await rundeMedDeltakere(o, { blind: true, antall: 1 });
+  await rate(o, kode, a, 1, 4);
+  assert.equal((await o.kall("POST", `/${kode}/avslor`, { vertNokkel: "feil", plass: 1 })).status, 403);
+  assert.equal((await o.kall("POST", `/${kode}/avslor`, { plass: 1 })).status, 403);
+  for (const plass of [0, 11, 1.5, "en", null]) {
+    assert.equal((await o.kall("POST", `/${kode}/avslor`, { vertNokkel, plass })).status, 400, `plass ${plass}`);
+  }
+  assert.deepEqual((await o.kall("GET", `/${kode}`)).body.avslort, [], "ingenting avslørt ennå");
+  assert.equal((await o.kall("POST", `/${kode}/avslor`, { vertNokkel, plass: 3 })).status, 200);
+  const r = await o.kall("POST", `/${kode}/avslor`, { vertNokkel, plass: 1 });
+  assert.equal((await o.kall("POST", `/${kode}/avslor`, { vertNokkel, plass: 1 })).status, 200, "samme plass to ganger er greit");
+  assert.deepEqual(r.body.avslort, [1, 3]);
+  const avvist = await rate(o, kode, a, 1, 2);
+  assert.equal(avvist.status, 409);
+  assert.match(avvist.body.feil, /Øl 1 er avslørt/);
+  assert.equal((await rate(o, kode, a, 2, 2)).status, 200, "øl som ikke er avslørt, kan rates");
+  await o.kall("POST", `/${kode}/avslutt`, { vertNokkel });
+  const slutt = (await o.kall("GET", `/${kode}`)).body;
+  assert.deepEqual(slutt.avslort, OL.map((_, i) => i + 1));
+  assert.ok(slutt.ol.every((ol) => ol.navn));
+  assert.equal((await o.kall("POST", `/${kode}/avslor`, { vertNokkel, plass: 2 })).status, 409, "avsluttet runde");
+});
+
+test("i en åpen runde vises ølene, men snitt og karakterer først når ølet er avslørt", async () => {
+  const o = oppsett();
+  const { kode, vertNokkel, deltakere: [a, b] } = await rundeMedDeltakere(o);
+  await rate(o, kode, a, 1, 4, "Godt");
+  await rate(o, kode, b, 1, 3);
+  await rate(o, kode, b, 2, 5);
+  const for1 = (await o.kall("GET", `/${kode}/resultater`)).body;
+  for (const ol of for1.ol) {
+    assert.equal(ol.navn, OL[ol.plass - 1].navn);
+    for (const k of ["snitt", "min", "maks", "spredning", "karakterer"]) assert.ok(!(k in ol), `${k} på øl ${ol.plass} før avsløringen`);
+  }
+  assert.ok(!JSON.stringify(for1).includes("Godt"));
+  await o.kall("POST", `/${kode}/avslor`, { vertNokkel, plass: 1 });
+  const etter = (await o.kall("GET", `/${kode}/resultater`)).body;
+  assert.equal(etter.ol[0].snitt, 3.5);
+  assert.equal(etter.ol[1].snitt, undefined);
 });
 
 test("ugyldig kode, kall over grensen og nødbryteren svarer uten et eneste kall til lageret", async () => {
@@ -236,13 +292,19 @@ test("en runde med 15 personer, 10 øl og 90 minutter bruker under 8 000 Redis-k
   const { kode, vertNokkel } = (await o.kall("POST", "", { ol: OL, blind: true })).body;
   const folk = [];
   for (let i = 0; i < 15; i++) folk.push((await o.kall("POST", `/${kode}/deltaker`, { kallenavn: `P${i}` })).body);
-  // Storskjermen spør hvert 5. sekund i 90 minutter. Karakterene kommer i løpet av de første 30 minuttene,
-  // og deltakerne spør hvert 20. sekund i den siste timen mens de venter på avsløringen.
-  const karakterer = folk.flatMap((d) => Array.from({ length: 10 }, (_, p) => [d, p + 1]));
+  // Storskjermen spør hvert 5. sekund i 90 minutter, og deltakerne hvert 30. sekund hele tiden. Hvert øl får
+  // ni minutter: alle rater det i løpet av de første par minuttene, og så avslører verten det. Da henter hver
+  // deltaker resultatene én gang.
+  const SPOR = 6, PER_OL = 108;
   for (let tikk = 0; tikk < 1080; tikk++) {
     await o.kall("GET", `/${kode}/resultater`);
-    if (tikk < karakterer.length) await rate(o, kode, karakterer[tikk][0], karakterer[tikk][1], 3.5);
-    if (tikk >= 360 && tikk % 4 === 0) for (let i = 0; i < folk.length; i++) await o.kall("GET", `/${kode}`);
+    const plass = Math.floor(tikk / PER_OL) + 1, iOlet = tikk % PER_OL;
+    if (iOlet < 2 * folk.length && iOlet % 2 === 0) await rate(o, kode, folk[iOlet / 2], plass, 3.5);
+    if (iOlet === PER_OL - 8) {
+      await o.kall("POST", `/${kode}/avslor`, { vertNokkel, plass });
+      for (let i = 0; i < folk.length; i++) await o.kall("GET", `/${kode}/resultater`);
+    }
+    if (tikk % SPOR === 0) for (let i = 0; i < folk.length; i++) await o.kall("GET", `/${kode}`);
     o.tid(5000);
   }
   await o.kall("POST", `/${kode}/avslutt`, { vertNokkel });

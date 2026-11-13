@@ -200,3 +200,126 @@ function alleKombinasjoner(kand, n, maks, budsjett) {
   prov(0, 0, {}, 0, 0);
   return best;
 }
+
+// Prøver alle sett der de låste er med, med n øl i alt og høyst «maks» per type.
+function alleMedLaste(kand, laste, n, maks, budsjett) {
+  const perType = {};
+  for (const o of laste) perType[o.gruppe] = (perType[o.gruppe] ?? 0) + 1;
+  const kost = laste.reduce((s, o) => s + o.kostnad, 0);
+  const score = laste.reduce((s, o) => s + o.justert, 0);
+  const ledig = alleKombinasjonerFra(kand, n - laste.length, maks, budsjett - kost, perType);
+  return ledig === null ? null : score + ledig;
+}
+
+function alleKombinasjonerFra(kand, n, maks, budsjett, start) {
+  let best = null;
+  const prov = (i, valgt, perType, kost, score) => {
+    if (kost > budsjett) return;
+    if (valgt === n) {
+      if (best === null || score > best) best = score;
+      return;
+    }
+    if (i === kand.length) return;
+    prov(i + 1, valgt, perType, kost, score);
+    const o = kand[i];
+    if ((perType[o.gruppe] ?? 0) < maks) {
+      prov(i + 1, valgt + 1, { ...perType, [o.gruppe]: (perType[o.gruppe] ?? 0) + 1 }, kost + o.kostnad, score + o.justert);
+    }
+  };
+  prov(0, 0, start, 0, 0);
+  return best;
+}
+
+const perType = (rekke) => rekke.reduce((t, o) => ({ ...t, [o.gruppe]: (t[o.gruppe] ?? 0) + 1 }), {});
+
+test("låste øl er med når antall personer, budsjett og antall endres, innenfor budsjettet og grensen per type", () => {
+  const forst = velg(data, { butikk: TORG, personer: 5, budsjett: 1500, antall: 8 });
+  const laste = [forst.rekke[0], forst.rekke[3], forst.rekke[5]];
+  let gikkOpp = 0;
+  for (const personer of [3, 5, 8, 12]) {
+    for (const budsjett of [1200, 1500, 2500, 5000]) {
+      for (const antall of [4, 6, 8, 10]) {
+        const r = velg(data, { butikk: TORG, personer, budsjett, antall, laste });
+        const navn = `${personer} personer, ${budsjett} kr, ${antall} øl`;
+        if (r.feil) continue;
+        gikkOpp++;
+        assert.equal(r.rekke.length, antall, navn);
+        for (const l of laste) assert.ok(r.rekke.some((o) => o.id === l.id), `${navn}: ${l.navn} mangler`);
+        assert.equal(new Set(r.rekke.map((o) => o.id)).size, antall, `${navn}: samme øl to ganger`);
+        assert.ok(pris(r) <= budsjett, `${navn}: rekka koster ${pris(r)}`);
+        for (const [g, n] of Object.entries(perType(r.rekke))) assert.ok(n <= r.maksPerType, `${navn}: ${n} av ${g}`);
+        const laast = r.rekke.find((o) => o.id === laste[0].id);
+        assert.equal(laast.flasker, Math.max(1, Math.ceil((personer * (laast.alkohol >= 10 ? 5 : 7)) / laast.cl - 1e-9)));
+      }
+    }
+  }
+  assert.ok(gikkOpp > 30, `gikk opp ${gikkOpp}`);
+});
+
+test("med låste øl er valget fortsatt det beste settet, også med flere låste av én type enn grensen", () => {
+  let frø = 11;
+  const tilfeldig = () => (frø = (frø * 16807) % 2147483647) / 2147483647;
+  const syn = { butikker: ["A"], rekkefolge: data.rekkefolge, ol: [] };
+  let id = 0;
+  for (const g of data.rekkefolge.slice(0, 6)) {
+    for (let i = 0; i < 6; i++) {
+      syn.ol.push({ id: String(id++), navn: "x", gruppe: g, stil: "", score: 3 + tilfeldig(),
+        innsjekker: 10 + Math.floor(tilfeldig() * 1000), alkohol: 6, cl: 33, pris: 40 + Math.round(tilfeldig() * 200),
+        nett: true, lager: { 0: 99 } });
+    }
+  }
+  const tilfeller = [
+    { typer: data.rekkefolge.slice(0, 6), antall: 4, laste: ["0"], maks: 1 },
+    { typer: data.rekkefolge.slice(0, 6), antall: 4, laste: ["0", "1"], maks: 2 },
+    { typer: data.rekkefolge.slice(0, 2), antall: 5, laste: ["7", "8"], maks: 3 },
+    { typer: data.rekkefolge.slice(1, 3), antall: 4, laste: ["0"], maks: 2 },
+  ];
+  for (const t of tilfeller) {
+    for (const budsjett of [400, 600, 900, 1500]) {
+      const valg = { butikk: "A", personer: 4, budsjett, antall: t.antall, typer: t.typer };
+      const laste = kandidater(syn, valg).filter((o) => t.laste.includes(o.id));
+      const r = velg(syn, { ...valg, laste });
+      const kand = kandidater(syn, valg).filter((o) => t.typer.includes(o.gruppe) && !t.laste.includes(o.id));
+      const best = alleMedLaste(kand, laste, t.antall, t.maks, budsjett);
+      const navn = `låst ${t.laste}, ${t.typer.length} typer, ${t.antall} øl, ${budsjett} kr`;
+      if (best === null) {
+        assert.ok(r.feil, `${navn}: ingen kombinasjon går, men utvalget fant en`);
+        continue;
+      }
+      assert.equal(r.maksPerType, t.maks, navn);
+      for (const l of t.laste) assert.ok(r.rekke.some((o) => o.id === l), `${navn}: ${l} mangler`);
+      assert.ok(Math.abs(r.rekke.reduce((s, o) => s + o.justert, 0) - best) < 1e-9, navn);
+    }
+  }
+});
+
+test("et låst øl uten lager eller som mangler i dataene blir stående og merkes", () => {
+  const forst = velg(data, { butikk: TORG, personer: 5, budsjett: 1500, antall: 8 });
+  const borte = { ...forst.rekke[2], id: "finnes-ikke", lager: {} };
+  const tomt = { ...data, ol: data.ol.map((o) => (o.id === forst.rekke[4].id ? { ...o, lager: {} } : o)) };
+  const r = velg(tomt, { butikk: TORG, personer: 5, budsjett: 1500, antall: 8, laste: [borte, forst.rekke[4]] });
+  assert.equal(r.feil, null);
+  const b = r.rekke.find((o) => o.id === "finnes-ikke");
+  assert.ok(b?.mangler, "øl som mangler i dataene");
+  assert.ok(r.rekke.find((o) => o.id === forst.rekke[4].id)?.utsolgt, "øl uten lager");
+  assert.ok(pris(r) <= 1500);
+});
+
+test("alle plassene låst gir de låste, og låste alkoholfrie er med blant de alkoholfrie", () => {
+  const forst = velg(data, { butikk: TORG, personer: 5, budsjett: 1500, antall: 4, alkoholfrie: 2 });
+  const laste = [...forst.rekke, forst.alkoholfrie[1]];
+  const r = velg(data, { butikk: TORG, personer: 6, budsjett: 1500, antall: 4, alkoholfrie: 2, laste });
+  assert.deepEqual(r.rekke.map((o) => o.id), forst.rekke.map((o) => o.id));
+  assert.ok(r.alkoholfrie.some((o) => o.id === forst.alkoholfrie[1].id));
+  assert.equal(r.alkoholfrie.length, 2);
+});
+
+test("for mange eller for dyre låste øl gir en feilmelding", () => {
+  const forst = velg(data, { butikk: TORG, personer: 5, budsjett: 1500, antall: 8, alkoholfrie: 2 });
+  const mange = velg(data, { butikk: TORG, personer: 5, budsjett: 1500, antall: 6, laste: forst.rekke });
+  assert.match(mange.feil, /låst 8 øl, men valgt 6/);
+  const af = velg(data, { butikk: TORG, personer: 5, budsjett: 1500, antall: 8, alkoholfrie: 1, laste: forst.alkoholfrie });
+  assert.match(af.feil, /låst 2 alkoholfrie, men valgt 1/);
+  const dyrt = velg(data, { butikk: TORG, personer: 5, budsjett: 300, antall: 8, laste: forst.rekke.slice(0, 4) });
+  assert.match(dyrt.feil, /koster \d+ kr, mer enn budsjettet/);
+});

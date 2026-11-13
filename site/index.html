@@ -80,6 +80,10 @@
 .facts .score { color: var(--gull); font-weight: 600; }
 .facts .pour { color: var(--accent); font-weight: 600; }
 .handlinger { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: .88rem; }
+.las { appearance: none; display: inline-flex; gap: 6px; align-items: center; font: 600 .85rem var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.las svg { width: 12px; height: 14px; }
+.las[aria-pressed="true"] { background: var(--rod); border-color: var(--rod); color: #fff; }
+.pick.laast .pick-glass .n { color: var(--rod); }
 details.bytt summary { cursor: pointer; color: var(--rod); font-weight: 600; }
 .alternativer { display: grid; gap: 8px; margin-top: 10px; }
 .alternativer button { text-align: left; display: grid; gap: 2px; font: inherit; font-size: .9rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; cursor: pointer; }
@@ -181,9 +185,12 @@ details.bytt summary { cursor: pointer; color: var(--rod); font-weight: 600; }
     <p class="tom" id="tom" hidden>Velg en butikk, eller «Bestill på nett», så setter siden sammen rekka.</p>
     <p class="status" id="status" role="status">Henter øl …</p>
     <div class="lenkeinfo" id="lenkeinfo" hidden>
-      <span>Rekka kommer fra en delt lenke, med dagens pris og lager.</span>
+      <span id="lenkeinfo-tekst"></span>
       <button type="button" class="knapp" id="ny-rekke">Regn ut på nytt</button>
+      <button type="button" class="knapp" id="lagre-igjen">Lagre rekka</button>
+      <button type="button" class="knapp" id="tilbake">Tilbake til den lagrede</button>
     </div>
+    <button type="button" class="knapp" id="las-opp" hidden>Lås opp alle</button>
     <nav class="lineup" id="lineup" aria-label="Rekkefølgen"></nav>
     <div class="stats" id="stats"></div>
     <div class="picks" id="picks"></div>
@@ -197,6 +204,7 @@ details.bytt summary { cursor: pointer; color: var(--rod); font-weight: 600; }
     <div class="knapper">
       <button type="button" class="knapp primar" id="kopier-liste">Kopier handlelista</button>
       <button type="button" class="knapp" id="kopier-lenke">Kopier lenke til rekka</button>
+      <button type="button" class="knapp" id="lagre-rekke">Lagre rekka</button>
       <span class="kopistatus" id="kopistatus" role="status"></span>
     </div>
   </section>
@@ -237,6 +245,7 @@ details.bytt summary { cursor: pointer; color: var(--rod); font-weight: 600; }
 import { velg, bytter, fraVarenumre, paLager, NETT, ALKOHOLFRITT } from "./utvalg.mjs";
 import { sno } from "./sno.mjs";
 import { SMAKERUNDE, api, huskSkriv } from "./oppsett.mjs";
+import { NOKKEL as LAGRET, tilLagring, fraLagring } from "./lagret.mjs";
 
 const STANDARD = { butikk: null, personer: 5, budsjett: 1500, antall: 8, alkoholfrie: 0 };
 const NETT_TEKST = "Bestill på nett";
@@ -272,10 +281,22 @@ function glass(gruppe, id) {
     <path class="glass-outline" d="${BOWL}"/><rect class="glass-stem" x="28.75" y="61" width="2.5" height="27" rx="1"/><ellipse class="glass-stem" cx="30" cy="90" rx="13" ry="2.6"/></svg>`;
 }
 
-let data, valg = { ...STANDARD }, rekke = [], alkoholfrie = [], feil = null, fraLenke = false, maksPerType = 1;
+let data, valg = { ...STANDARD }, rekke = [], alkoholfrie = [], feil = null, maksPerType = 1;
+// Hvor rekka kommer fra: «ny» er regnet ut her, «lenke» fra en delt lenke, «lagret» er den lagrede uendret,
+// og «endret» er den lagrede med nye valg.
+let kilde = "ny", manglerFraLenke = 0, lagret = null;
+// De låste ølene, etter varenummer. Objektene tas vare på, så låsene overlever en rekke som ikke går opp.
+let laast = new Map();
+const lesLagret = () => { try { return fraLagring(localStorage.getItem(LAGRET)); } catch { return null; } };
+const fraLagringen = () => ["lenke", "lagret"].includes(kilde);
 
 /* Lenken: valgene og varenumrene i rekka, så en delt lenke viser de samme ølene. */
 function lesLenke() {
+  lagret = lesLagret();
+  if (location.hash.length <= 1 && lagret) {
+    visLagret();
+    return;
+  }
   const p = new URLSearchParams(location.hash.slice(1));
   const tall = (navn, min, max, standard) => {
     const v = parseInt(p.get(navn), 10);
@@ -295,17 +316,32 @@ function lesLenke() {
       : p.get("t").split(",").filter(Boolean).map(Number).map((i) => data.rekkefolge[i]).filter(Boolean),
   };
   const ider = (p.get("ol") || "").split(",").filter(Boolean);
+  const afIder = (p.get("afol") || "").split(",").filter(Boolean);
+  const las = new Set((p.get("las") || "").split(",").filter(Boolean));
   if (valg.butikk && ider.length) {
     rekke = fraVarenumre(data, valg, ider);
-    alkoholfrie = fraVarenumre(data, valg, (p.get("afol") || "").split(",").filter(Boolean));
+    alkoholfrie = fraVarenumre(data, valg, afIder);
+    manglerFraLenke = ider.length + afIder.length - rekke.length - alkoholfrie.length;
+    laast = new Map(alleIRekka().filter((o) => las.has(o.id)).map((o) => [o.id, o]));
     feil = null;
-    fraLenke = true;
+    kilde = "lenke";
   } else {
+    laast = new Map();
+    kilde = "ny";
     beregn();
   }
 }
 
-function skrivLenke() {
+function visLagret() {
+  valg = { ...lagret.valg, typer: lagret.valg.typer.filter((g) => data.rekkefolge.includes(g)) };
+  rekke = lagret.rekke.map((o) => ({ ...o }));
+  alkoholfrie = lagret.alkoholfrie.map((o) => ({ ...o }));
+  laast = new Map(alleIRekka().filter((o) => lagret.laste.includes(o.id)).map((o) => [o.id, o]));
+  feil = null;
+  kilde = "lagret";
+}
+
+function lenke() {
   const p = new URLSearchParams();
   if (valg.butikk) p.set("b", valg.butikk);
   p.set("p", valg.personer);
@@ -315,22 +351,30 @@ function skrivLenke() {
   if (valg.typer.length !== data.rekkefolge.length) p.set("t", valg.typer.map((g) => data.rekkefolge.indexOf(g)).join(","));
   if (rekke.length) p.set("ol", rekke.map((o) => o.id).join(","));
   if (alkoholfrie.length) p.set("afol", alkoholfrie.map((o) => o.id).join(","));
-  history.replaceState(null, "", "#" + p.toString());
+  if (laast.size) p.set("las", [...laast.keys()].join(","));
+  return `${location.origin}${location.pathname}#${p.toString()}`;
+}
+
+// Den lagrede rekka står uten lenke i adressefeltet, så den vises igjen når siden lastes på nytt.
+function skrivLenke() {
+  history.replaceState(null, "", kilde === "lagret" ? location.pathname : lenke());
 }
 
 function beregn() {
-  fraLenke = false;
+  kilde = kilde === "lagret" || kilde === "endret" ? "endret" : "ny";
   if (!valg.butikk) {
     rekke = [];
     alkoholfrie = [];
     feil = null;
     return;
   }
-  const r = velg(data, valg);
+  const r = velg(data, { ...valg, laste: [...laast.values()] });
   rekke = r.rekke;
-  alkoholfrie = r.alkoholfrie;
+  alkoholfrie = r.alkoholfrie ?? [];
   feil = r.feil;
   maksPerType = r.maksPerType ?? 1;
+  // Låsene får dagens tall når rekka gikk opp.
+  for (const o of alleIRekka()) if (laast.has(o.id)) laast.set(o.id, o);
 }
 
 function oppdater() {
@@ -489,11 +533,45 @@ $("alle-typer").addEventListener("click", () => {
   valg.typer = valg.typer.length === data.rekkefolge.length ? [] : [...data.rekkefolge];
   oppdater();
 });
-$("ny-rekke").addEventListener("click", oppdater);
+$("ny-rekke").addEventListener("click", () => {
+  // Fra den lagrede er det en ny rekke uten låser. Fra en lenke regnes resten ut på nytt rundt låsene.
+  if (kilde === "lagret") {
+    laast = new Map();
+    kilde = "ny";
+  }
+  oppdater();
+});
+$("las-opp").addEventListener("click", () => { laast = new Map(); oppdater(); });
+function lagre() {
+  try {
+    localStorage.setItem(LAGRET, tilLagring({ valg, rekke, alkoholfrie, laste: [...laast.keys()], lagret: new Date().toISOString() }));
+  } catch {
+    $("kopistatus").textContent = "Kunne ikke lagre i denne nettleseren. Kopier lenken i stedet.";
+    return false;
+  }
+  lagret = lesLagret();
+  kilde = "lagret";
+  skrivLenke();
+  tegn();
+  return true;
+}
+$("lagre-rekke").addEventListener("click", () => {
+  if (lagre()) $("kopistatus").textContent = "Rekka er lagret i denne nettleseren.";
+});
+$("lagre-igjen").addEventListener("click", lagre);
+$("tilbake").addEventListener("click", () => {
+  lagret = lesLagret();
+  if (!lagret) return;
+  visLagret();
+  skrivLenke();
+  tegn();
+});
 
 /* Rekka */
 const alleIRekka = () => [...rekke, ...alkoholfrie];
 function lagerTekst(o) {
+  if (kilde === "lagret") return "";
+  if (o.mangler) return "Finnes ikke lenger hos Polet";
   if (valg.butikk === NETT) return o.nett ? "kan bestilles på nett" : "kan ikke bestilles på nett";
   return `${nf0.format(paLager(data, o, valg.butikk))} på lager`;
 }
@@ -507,9 +585,12 @@ function skjenkTekst(o) {
   return `${o.flasker === 1 ? "1 flaske" : `${o.flasker} flasker`}, ca. ${nf0.format(Math.round(cl))} cl hver`;
 }
 
+const LAS = `<svg viewBox="0 0 12 14" aria-hidden="true"><rect x="1" y="6" width="10" height="7.5" rx="1.5" fill="currentColor"/><path d="M3.5 6V4a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`;
 function olAvsnitt(o, nr, plass) {
-  const alt = plass == null ? [] : bytter(data, valg, rekke, alkoholfrie, plass);
-  return `<article class="pick" id="${nr ? `ol-${nr}` : `alkoholfri-${esc(o.id)}`}">
+  const erLaast = laast.has(o.id);
+  const alt = plass == null || erLaast || kilde === "lagret" ? [] : bytter(data, valg, rekke, alkoholfrie, plass);
+  const lager = lagerTekst(o);
+  return `<article class="pick${erLaast ? " laast" : ""}" id="${nr ? `ol-${nr}` : `alkoholfri-${esc(o.id)}`}">
     <div class="pick-glass">${nr ? `<span class="n">${nr}</span>` : ""}${glass(o.gruppe, "p" + o.id)}</div>
     <div class="pick-body">
       <h3 tabindex="-1">${esc(o.navn)}</h3>
@@ -517,9 +598,11 @@ function olAvsnitt(o, nr, plass) {
       <div class="facts">
         <span class="score">${scoreTekst(o)}</span><span>${innsjekkTekst(o)}</span>
         <span>${nf1.format(o.alkohol)} %</span><span>${nf1.format(o.cl)} cl</span><span>${kr(o.pris)}</span>
-        <span>${lagerTekst(o)}</span><span class="pour">${skjenkTekst(o)}</span>
+        ${lager ? `<span>${esc(lager)}</span>` : ""}<span class="pour">${skjenkTekst(o)}</span>
       </div>
       <div class="handlinger">
+        <button type="button" class="las" data-las="${esc(o.id)}" aria-pressed="${erLaast}"
+          aria-label="${erLaast ? "Lås opp" : "Lås"} ${esc(o.navn)}">${LAS}${erLaast ? "Låst" : "Lås"}</button>
         ${o.polet ? `<a href="${esc(o.polet)}" target="_blank" rel="noopener">Se varen hos Polet</a>` : ""}
         ${o.untappd ? `<a href="${esc(o.untappd)}" target="_blank" rel="noopener">Se på Untappd</a>` : ""}
       </div>
@@ -530,6 +613,21 @@ function olAvsnitt(o, nr, plass) {
         </button>`).join("")}</div></details>` : ""}
     </div>
   </article>`;
+}
+
+for (const id of ["picks", "alkoholfrie-ol"]) {
+  $(id).addEventListener("click", (e) => {
+    const knapp = e.target.closest("button[data-las]");
+    if (!knapp) return;
+    const o = alleIRekka().find((x) => x.id === knapp.dataset.las);
+    if (!o) return;
+    if (laast.has(o.id)) laast.delete(o.id);
+    else laast.set(o.id, o);
+    if (kilde === "lagret") kilde = "endret";
+    skrivLenke();
+    tegn();
+    document.querySelector(`button[data-las="${CSS.escape(o.id)}"]`)?.focus();
+  });
 }
 
 $("picks").addEventListener("click", (e) => {
@@ -548,9 +646,9 @@ function statusTekst(totalt) {
   if (feil) return feil;
   const sted = valg.butikk === NETT ? "på nett" : `i ${valg.butikk}`;
   let t = `${stor(ord(rekke.length))} øl ${sted} for ${kr(totalt)}, til ${valg.personer} personer.`;
-  if (maksPerType > 1 && !fraLenke) t += ` Opptil ${ord(maksPerType)} av hver type.`;
+  if (maksPerType > 1 && !fraLagringen()) t += ` Opptil ${ord(maksPerType)} av hver type.`;
   if (alkoholfrie.length) t += alkoholfrie.length === 1 ? " Ett alkoholfritt i tillegg." : ` ${stor(ord(alkoholfrie.length))} alkoholfrie i tillegg.`;
-  if (valg.alkoholfrie > alkoholfrie.length && !fraLenke) {
+  if (valg.alkoholfrie > alkoholfrie.length && !fraLagringen()) {
     t += alkoholfrie.length ? ` Fant ikke flere alkoholfrie som passer.` : " Fant ikke noe alkoholfritt juleøl som passer.";
   }
   return t;
@@ -566,7 +664,7 @@ function tegn() {
   const totalt = alle.reduce((s, o) => s + o.flasker * o.pris, 0);
   $("status").classList.toggle("feil", Boolean(feil));
   $("status").textContent = harButikk ? statusTekst(totalt) : "";
-  $("lenkeinfo").hidden = !fraLenke;
+  tegnInfo();
 
   $("lineup").style.setProperty("--antall", Math.max(rekke.length, 1));
   $("lineup").innerHTML = rekke.map((o, i) => `<a href="#ol-${i + 1}" data-hopp="ol-${i + 1}">${glass(o.gruppe, "l" + o.id)}
@@ -595,6 +693,23 @@ function tegn() {
   if (harButikk) tegnHylla();
 }
 
+const datoTekst = (iso) => new Intl.DateTimeFormat("nb-NO", { day: "numeric", month: "long", timeZone: "Europe/Oslo" }).format(new Date(iso));
+function tegnInfo() {
+  const mangler = manglerFraLenke === 1 ? " Ett øl fra lenken finnes ikke lenger hos Polet."
+    : manglerFraLenke > 1 ? ` ${stor(ord(manglerFraLenke))} øl fra lenken finnes ikke lenger hos Polet.` : "";
+  const tekst = {
+    lenke: `Rekka kommer fra en delt lenke, med dagens pris og lager.${mangler}`,
+    lagret: lagret ? `Rekka di, lagret ${datoTekst(lagret.lagret)}.` : "",
+    endret: lagret ? `Endret etter at du lagret ${datoTekst(lagret.lagret)}.` : "",
+  }[kilde];
+  $("lenkeinfo").hidden = !tekst;
+  $("lenkeinfo-tekst").textContent = tekst ?? "";
+  $("ny-rekke").hidden = !["lenke", "lagret"].includes(kilde);
+  $("ny-rekke").textContent = kilde === "lagret" ? "Lag ny rekke" : "Regn ut på nytt";
+  $("lagre-igjen").hidden = $("tilbake").hidden = kilde !== "endret";
+  $("las-opp").hidden = !(feil && laast.size);
+}
+
 $("lineup").addEventListener("click", (e) => {
   const a = e.target.closest("a[data-hopp]");
   if (!a) return;
@@ -618,9 +733,9 @@ $("kopier-liste").addEventListener("click", () => {
   const alle = alleIRekka();
   const linjer = alle.map((o) => `${o.flasker} × ${o.navn} (varenr. ${o.id}), ${kr(o.flasker * o.pris)}`);
   const totalt = alle.reduce((s, o) => s + o.flasker * o.pris, 0);
-  kopier([`Juleølsmaking for ${valg.personer} personer, ${sted}`, ...linjer, `Til sammen ${kr(totalt)}`, location.href].join("\n"), "Handlelista er kopiert.");
+  kopier([`Juleølsmaking for ${valg.personer} personer, ${sted}`, ...linjer, `Til sammen ${kr(totalt)}`, lenke()].join("\n"), "Handlelista er kopiert.");
 });
-$("kopier-lenke").addEventListener("click", () => kopier(location.href, "Lenken er kopiert."));
+$("kopier-lenke").addEventListener("click", () => kopier(lenke(), "Lenken er kopiert."));
 
 /* Smakerunden: rekka, og alkoholfrie så langt det er plass, sendes til API-et. */
 const MAKS_I_RUNDE = 12;

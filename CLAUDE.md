@@ -41,14 +41,15 @@ node tools/lokal-api.mjs                # API-et for smakerunden lokalt på port
   Ikke Polets navn eller logo i navnet på siden.
 - Ølmonopolet nevnes og lenkes til i bunnteksten.
 - Hovedsiden sender ingenting om brukeren: posisjonen fra «Finn nærmeste butikk» brukes bare i nettleseren,
-  og valgt butikk huskes bare i `localStorage`. Smakerunden lagrer kallenavn, karakterer og kommentarer hos
+  og valgt butikk og en lagret rekke huskes bare i `localStorage`. Smakerunden lagrer kallenavn, karakterer og kommentarer hos
   Upstash i sju dager etter siste endring, og ingenting annet. Vi lagrer ikke IP-adresser selv, men Vercel og
   Upstash fører egne logger. Ingen eksterne fonter, skript eller sporing.
 - Upstash-databasen deles med lunsjprosjektet. Alle nøkler har prefikset `olsmaking:`, og lageret avviser
   alt annet. Nye ruter må gå gjennom sikringene før lageret: ugyldig kode og ukjent rute avvises, bremsen per
   instans, og nødbryteren `SMAKERUNDE_AV=1`.
-- I en blind runde får ingen andre enn verten se annet enn plassen til hvert øl før runden er avsluttet. En
-  test sjekker feltene mot en tillatt liste, og den må utvides når nye felter kommer.
+- Før et øl er avslørt, får ingen andre enn verten se annet enn plassen i en blind runde, og ingen ser snitt
+  eller karakterer i noen runde. En test sjekker feltene for hvert øl mot en tillatt liste, og den må utvides
+  når nye felter kommer.
 
 ## Tasks
 

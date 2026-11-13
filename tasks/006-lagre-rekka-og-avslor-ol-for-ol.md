@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | pending |
+| Status | in-progress |
 | Created | 2026-11-13 |
 | Completed | - |
 | Henger sammen med | [005](005-smakerunde.md) (smakerunden, ikke prøvd på Vercel ennå), [001](001-olsmaking-planlegger.md) |
@@ -79,6 +79,9 @@ flowchart LR
 
 ### 3. Avsløre øl for øl i smakerunden
 
+Avsløringen gjelder både blinde og åpne runder: også i en åpen runde kommer snittet først når verten avslører
+ølet.
+
 API (`api/_lib/smakerunde.mjs`):
 
 - Runden får en liste over avslørte plasser i runde-JSON-en. Ny rute `POST /api/runde/{kode}/avslor` med
@@ -123,7 +126,8 @@ kommandoer i Upstash. Med 30 sekunder og antall deltakere i resultatene blir det
 
 ### 5. Docs
 
-- `README.md`: rekka kan lagres og låses, og smakerunden avsløres øl for øl.
+- `README.md`: rekka kan lagres og låses, og smakerunden avsløres øl for øl. Setningen om at storskjermen
+  viser snittet mens dere smaker, rettes.
 - `CLAUDE.md`: personvernregelen nevner at rekka også lagres i `localStorage`, og regelen om testen av
   tillatte felter i en blind runde gjelder hvert øl.
 - `docs/deploy.md`: røyktesten får et kall til `/avslor`, og tallene for kvoten oppdateres.
@@ -179,10 +183,3 @@ Risiko: låsene endrer utregningen som velger rekka, og den har en grense per ty
 som bryter grensen eller budsjettet uten at noen ser det, og derfor sjekker testene begge. Avsløringen gjør
 hva som er skjult i en blind runde, avhengig av hvert øl i stedet for hele runden, og det er der en lekkasje
 kan komme.
-
-### Åpent
-
-- **Gjelder avsløringen også åpne runder?** Planen gjør det likt: også i en åpen runde vises snittet først når
-  verten avslører ølet, og karakterene låses da. Det endrer det `README.md` lover i dag («Storskjermen viser
-  snittet per øl mens dere smaker»). Alternativet er at en åpen runde fungerer som i dag, med snittet hele
-  tiden, og at avsløringen bare finnes i blinde runder. Lett å endre senere.

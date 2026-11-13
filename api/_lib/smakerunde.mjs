@@ -99,7 +99,8 @@ function finnRute(request) {
   if (deler.length === 0) return m === "POST" ? { handling: lagRunde } : null;
   const kode = deler[0].toUpperCase();
   if (!KODE.test(kode) || deler.length > 2) return null;
-  const ruter = { "GET:": hentRunde, "POST:deltaker": bliMed, "PUT:karakter": giKarakter, "GET:resultater": resultater, "POST:avslutt": avslutt };
+  const ruter = { "GET:": hentRunde, "POST:deltaker": bliMed, "PUT:karakter": giKarakter, "GET:resultater": resultater,
+    "POST:avslor": avslor, "POST:avslutt": avslutt };
   const handling = ruter[`${m}:${deler[1] ?? ""}`];
   return handling ? { handling, kode } : null;
 }
@@ -130,12 +131,16 @@ async function hentRundeEllerFeil(lager, kode, ekstra = []) {
   return [tolk(r), ...resten];
 }
 
-// Hva alle får se. I en blind runde som ikke er avsluttet, har hvert øl bare plassen sin.
+// Et øl er avslørt når verten har avslørt det, eller når runden er avsluttet. Runder fra før avsløringen
+// fantes, har ingen liste.
+const avslorte = (r) => (r.avsluttet ? r.ol.map((o) => o.plass) : (r.avslort ?? []));
+const erAvslort = (r, plass) => r.avsluttet || (r.avslort ?? []).includes(plass);
+
+// Hva alle får se. I en blind runde har et øl som ikke er avslørt, bare plassen sin.
 export function visRunde(r, erVert) {
-  const skjult = r.blind && !r.avsluttet && !erVert;
   return {
-    kode: r.kode, blind: r.blind, avsluttet: r.avsluttet, opprettet: r.opprettet,
-    ol: r.ol.map((o) => (skjult ? { plass: o.plass } : { ...o })),
+    kode: r.kode, blind: r.blind, avsluttet: r.avsluttet, opprettet: r.opprettet, avslort: avslorte(r),
+    ol: r.ol.map((o) => (r.blind && !erVert && !erAvslort(r, o.plass) ? { plass: o.plass } : { ...o })),
   };
 }
 
@@ -159,7 +164,7 @@ async function lagRunde({ request, lager, klokke }) {
   const vertNokkel = nyNokkel();
   for (let forsok = 0; forsok < 5; forsok++) {
     const kode = nyKode();
-    const runde = { kode, opprettet: na, blind: inn.blind === true, avsluttet: false, vert: hash(vertNokkel), ol: kopi };
+    const runde = { kode, opprettet: na, blind: inn.blind === true, avsluttet: false, avslort: [], vert: hash(vertNokkel), ol: kopi };
     const [ok] = await lager.kjor([["SET", nokkel.runde(kode), JSON.stringify(runde), "NX", "EX", LEVETID]]);
     if (ok === "OK") {
       await lager.kjor([["ZADD", nokkel.aktive, na, kode], ["EXPIRE", nokkel.aktive, LEVETID]]);
@@ -202,32 +207,50 @@ async function giKarakter({ request, lager, kode }) {
   const d = tolk(deltaker);
   if (!d || !lik(hash(String(inn.deltakerNokkel ?? "")), d.nokkel)) throw new Klientfeil(403, "Du kan bare endre dine egne karakterer.");
   if (r.avsluttet) throw new Klientfeil(409, "Runden er avsluttet, så karakterene kan ikke endres.");
+  if (erAvslort(r, plass)) throw new Klientfeil(409, `Øl ${plass} er avslørt, så karakteren kan ikke endres.`);
   await lager.kjor([["HSET", nokkel.karakterer(kode), `${id}:${plass}`, JSON.stringify({ stjerner, kommentar })], ...fornyAlle(kode)]);
   return { status: 200, body: { ok: true } };
+}
+
+// Verten avslører ett øl: karakterene for det låses, og navnet, snittet og karakterene blir synlige for alle.
+// Bare verten skriver runden, så to samtidige avsløringer er det eneste som kan miste en endring.
+async function avslor({ request, lager, kode }) {
+  const inn = await lesJson(request);
+  const [r] = await hentRundeEllerFeil(lager, kode);
+  if (!lik(hash(String(inn.vertNokkel ?? "")), r.vert)) throw new Klientfeil(403, "Bare verten kan avsløre øl.");
+  if (r.avsluttet) throw new Klientfeil(409, "Runden er avsluttet.");
+  const plass = Number(inn.plass);
+  if (!Number.isInteger(plass) || plass < 1 || plass > r.ol.length) throw new Klientfeil(400, "Ukjent plass i rekka.");
+  const ny = { ...r, avslort: [...new Set([...(r.avslort ?? []), plass])].sort((a, b) => a - b) };
+  await lager.kjor([["SET", nokkel.runde(kode), JSON.stringify(ny), "EX", LEVETID], ...fornyAlle(kode).slice(1)]);
+  return { status: 200, body: visRunde(ny, true) };
 }
 
 async function avslutt({ request, lager, kode }) {
   const inn = await lesJson(request);
   const [r] = await hentRundeEllerFeil(lager, kode);
   if (!lik(hash(String(inn.vertNokkel ?? "")), r.vert)) throw new Klientfeil(403, "Bare verten kan avslutte runden.");
-  const ny = { ...r, avsluttet: true };
+  const ny = { ...r, avsluttet: true, avslort: r.ol.map((o) => o.plass) };
   await lager.kjor([["SET", nokkel.runde(kode), JSON.stringify(ny), "EX", LEVETID], ...fornyAlle(kode).slice(1)]);
   return { status: 200, body: visRunde(ny, true) };
 }
 
-// Antall, snitt og spredning per øl. Navn, Untappd, kallenavn og kommentarer bare når de kan vises.
+// Antall karakterer per øl, og snitt, spredning og karakterene først når ølet er avslørt. Kallenavnene
+// hentes bare når et øl er avslørt; ellers holder det med antall deltakere.
 async function resultater({ lager, kode }) {
   const [r0] = await hentRundeEllerFeil(lager, kode, []);
-  const visAlt = !r0.blind || r0.avsluttet;
-  const ekstra = [["HGETALL", nokkel.karakterer(kode)], ...(visAlt ? [["HGETALL", nokkel.deltakere(kode)]] : [])];
-  const [kar, del] = await lager.kjor(ekstra);
-  return { status: 200, body: regnUt(r0, tilObjekt(kar), tilObjekt(del)) };
+  const trengerNavn = avslorte(r0).length > 0;
+  const [kar, del] = await lager.kjor([["HGETALL", nokkel.karakterer(kode)],
+    trengerNavn ? ["HGETALL", nokkel.deltakere(kode)] : ["HLEN", nokkel.deltakere(kode)]]);
+  const deltakere = trengerNavn ? tilObjekt(del) : {};
+  return { status: 200, body: regnUt(r0, tilObjekt(kar), deltakere, trengerNavn ? Object.keys(deltakere).length : del) };
 }
 
 const snitt = (l) => l.reduce((s, x) => s + x, 0) / l.length;
 
-export function regnUt(runde, karakterer, deltakere) {
-  const visAlt = !runde.blind || runde.avsluttet;
+// Et øl som ikke er avslørt, har plassen og antall karakterer, og i en åpen runde også opplysningene om ølet.
+// Snitt og karakterer kommer først når det er avslørt, i både blind og åpen runde.
+export function regnUt(runde, karakterer, deltakere, antallDeltakere = Object.keys(deltakere).length) {
   const per = {};
   for (const [nok, v] of Object.entries(karakterer)) {
     const skille = nok.lastIndexOf(":");
@@ -237,18 +260,19 @@ export function regnUt(runde, karakterer, deltakere) {
   const ol = runde.ol.map((o) => {
     const k = per[o.plass] ?? [];
     const s = k.map((x) => x.stjerner);
+    const ut = { plass: o.plass, antall: s.length };
+    const omOlet = { navn: o.navn, gruppe: o.gruppe, stil: o.stil, score: o.score, alkohol: o.alkohol, cl: o.cl, pris: o.pris, id: o.id, polet: o.polet };
+    if (!erAvslort(runde, o.plass)) return runde.blind ? ut : { ...ut, ...omOlet };
     const m = s.length ? snitt(s) : null;
-    const grunn = {
-      plass: o.plass, antall: s.length, snitt: m, min: s.length ? Math.min(...s) : null, maks: s.length ? Math.max(...s) : null,
+    return {
+      ...ut, ...omOlet, snitt: m, min: s.length ? Math.min(...s) : null, maks: s.length ? Math.max(...s) : null,
       spredning: s.length ? Math.sqrt(snitt(s.map((x) => (x - m) ** 2))) : null,
+      karakterer: k.map((x) => ({ kallenavn: deltakere[x.id]?.kallenavn ?? "Ukjent", stjerner: x.stjerner, kommentar: x.kommentar })),
     };
-    if (!visAlt) return grunn;
-    return { ...grunn, navn: o.navn, gruppe: o.gruppe, stil: o.stil, score: o.score, alkohol: o.alkohol, cl: o.cl, pris: o.pris, id: o.id, polet: o.polet,
-      karakterer: k.map((x) => ({ kallenavn: deltakere[x.id]?.kallenavn ?? "Ukjent", stjerner: x.stjerner, kommentar: x.kommentar })) };
   });
   const harRatet = new Set(Object.keys(karakterer).map((nok) => nok.slice(0, nok.lastIndexOf(":"))));
-  const ut = { kode: runde.kode, blind: runde.blind, avsluttet: runde.avsluttet, harRatet: harRatet.size, ol };
-  if (visAlt) ut.deltakere = Object.keys(deltakere).length;
+  const ut = { kode: runde.kode, blind: runde.blind, avsluttet: runde.avsluttet, avslort: avslorte(runde), harRatet: harRatet.size,
+    deltakere: antallDeltakere, ol };
   if (runde.avsluttet) ut.sammendrag = sammendrag(ol, per, deltakere, runde);
   return ut;
 }

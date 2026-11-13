@@ -18,15 +18,22 @@ Du får:
 - en lenke til rekka som kan deles: den viser de samme ølene, med dagens pris og lager
 - hele hylla i butikken, med søk og filter
 
+Handler dere noen uker før dere smaker, kan du låse ølene du har kjøpt eller vil ha. Endrer du antall personer,
+budsjett eller typer, blir de låste stående, og bare resten velges på nytt. «Lagre rekka» lagrer rekka i
+nettleseren din, med alle opplysningene. Når du kommer tilbake, er den der uendret, også om et øl er utsolgt
+eller borte hos Polet. Den lagrede rekka finnes bare på den enheten; lenken er måten å dele den på.
+
 ## Smakerunde
 
 Under rekka kan du starte en smakerunde. Du får en kode og en lenke som du deler med de andre, og en side for
 storskjerm. Alle blir med på mobilen med et kallenavn og gir hvert øl 1 til 5 stjerner i halve steg, med en
-valgfri kommentar. Storskjermen viser snittet per øl mens dere smaker. Når du avslutter, kommer kontorets
-favoritt, det mest omstridte ølet, den største overraskelsen og hvem som var mest enig med Untappd, og
-resultatet kan skrives ut eller lagres som bilde.
+valgfri kommentar. Mens dere smaker, viser storskjermen hvor mange som har ratet hvert øl. Når alle har smakt
+et øl, avslører du det: da låses karakterene for det ølet, og snittet, Untappd og kommentarene vises på
+storskjermen og hos alle. Når du avslutter, avsløres resten, og så kommer kontorets favoritt, det mest
+omstridte ølet, den største overraskelsen og hvem som var mest enig med Untappd. Resultatet kan skrives ut
+eller lagres som bilde.
 
-Velger du blindsmaking, ser deltakerne bare «Øl 1», «Øl 2» til du avslutter. Du får en skjenkeliste over
+Velger du blindsmaking, ser deltakerne bare «Øl 1», «Øl 2» til du avslører ølet. Du får en skjenkeliste over
 hvilken flaske som er hvilket nummer.
 
 **Hva som lagres:** kallenavnet, karakterene og kommentarene dine, i sju dager etter siste endring i runden.

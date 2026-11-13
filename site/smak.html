@@ -57,7 +57,7 @@ textarea { resize: vertical; min-height: 2.6rem; font-size: .95rem; }
       <label for="kallenavn">Kallenavn</label>
       <input id="kallenavn" maxlength="30" autocomplete="nickname" required>
       <button class="knapp primar" type="submit">Bli med</button>
-      <span class="hjelp">Kallenavnet, karakterene og kommentarene dine lagres i sju dager og vises for de andre når runden er avsluttet.</span>
+      <span class="hjelp">Kallenavnet, karakterene og kommentarene dine lagres i sju dager og vises for de andre når verten avslører ølene.</span>
     </form>
     <p class="feil" id="feil" role="alert" hidden></p>
   </section>
@@ -102,7 +102,7 @@ async function start() {
   if (!meg && !runde.avsluttet) {
     $("inngang").hidden = false;
     $("navn-skjema").hidden = false;
-    $("ingress").textContent = `${runde.ol.length} øl${runde.blind ? ", smakt blindt" : ""}. Gi hvert av dem 1 til 5 stjerner. Trykk to ganger på samme stjerne for en halv.`;
+    visIngress();
     return;
   }
   await visSmaking();
@@ -129,28 +129,42 @@ $("navn-skjema").addEventListener("submit", async (e) => {
   }
 });
 
+function visIngress() {
+  const om = `${runde.ol.length} øl${runde.blind ? ", smakt blindt" : ""}.`;
+  $("ingress").textContent = runde.avsluttet ? om : `${om} Gi hvert av dem 1 til 5 stjerner. Trykk to ganger på samme stjerne for en halv.`;
+}
+
+const avslort = (plass) => runde.avsluttet || (runde.avslort ?? []).includes(plass);
+
 async function visSmaking() {
   $("inngang").hidden = true;
   $("smaking").hidden = false;
   $("tittel").textContent = meg ? `Hei, ${meg.kallenavn}` : "Resultatet";
-  if (runde.avsluttet) {
-    resultat = await api(`/${kode}/resultater`);
-    runde = await api(`/${kode}`);
-  }
+  if (runde.avsluttet || runde.avslort?.length) resultat = await api(`/${kode}/resultater`);
   tegn();
   if (!runde.avsluttet && meg) {
-    // Spør bare når alt er ratet, og stopp når verten har avsluttet.
+    // Spør etter runden hvert 30. sekund, og henter resultatene bare når verten har avslørt noe nytt.
     stoppPoll = poll(async () => {
-      if (!alleRatet()) return;
       const ny = await api(`/${kode}`);
-      if (ny.avsluttet) {
-        runde = ny;
-        resultat = await api(`/${kode}/resultater`);
-        tegn();
-        return "stopp";
-      }
-    }, 20000);
+      if (ny.avsluttet === runde.avsluttet && (ny.avslort ?? []).length === (runde.avslort ?? []).length) return;
+      runde = ny;
+      resultat = await api(`/${kode}/resultater`);
+      tegnOgBehold();
+      if (ny.avsluttet) return "stopp";
+    }, 30000);
   }
+}
+
+// Tegner på nytt uten å miste en kommentar man holder på å skrive, eller hvor markøren står.
+function tegnOgBehold() {
+  const utkast = Object.fromEntries([...document.querySelectorAll("textarea[data-plass]")].map((t) => [t.dataset.plass, t.value]));
+  const aktiv = document.activeElement?.id;
+  tegn();
+  for (const [plass, tekst] of Object.entries(utkast)) {
+    const t = $(`kom-${plass}`);
+    if (t) t.value = tekst;
+  }
+  if (aktiv) $(aktiv)?.focus();
 }
 
 const alleRatet = () => runde.ol.every((o) => mine[o.plass]?.stjerner);
@@ -163,15 +177,17 @@ function stjerneKnapper(plass, v, laast) {
 }
 
 function tegn() {
-  const laast = runde.avsluttet || !meg;
+  visIngress();
   const res = resultat ? Object.fromEntries(resultat.ol.map((o) => [o.plass, o])) : {};
   $("smaking-h").textContent = runde.avsluttet ? "Resultatet" : "Ølene";
   $("status").textContent = runde.avsluttet
     ? "Verten har avsluttet runden. Her er det du ga, kontorets snitt og Untappd."
-    : alleRatet() ? "Takk! Du har ratet alt. Resultatet kommer her når verten avslutter." : runde.blind ? "Navnene er skjult til verten avslutter runden." : "";
+    : alleRatet() ? "Takk! Du har ratet alt. Resultatene kommer her når verten avslører ølene."
+    : runde.blind ? "Navnene vises når verten avslører hvert øl." : "Snittet vises når verten avslører hvert øl.";
   $("liste").innerHTML = runde.ol.map((o) => {
     const min = mine[o.plass] ?? {};
     const r = res[o.plass];
+    const laast = !meg || avslort(o.plass);
     const navn = o.navn ? `<span>${esc(o.navn)}</span>` : "";
     return `<article class="kort ol" id="ol-${o.plass}">
       <h3><span class="nr">Øl ${o.plass}</span>${navn}</h3>
@@ -184,8 +200,8 @@ function tegn() {
       ${laast ? (min.kommentar ? `<p>«${esc(min.kommentar)}»</p>` : "")
         : `<label class="hjelp" for="kom-${o.plass}">Kommentar (valgfri)</label>
            <textarea id="kom-${o.plass}" data-plass="${o.plass}" maxlength="140" rows="2">${esc(min.kommentar ?? "")}</textarea>`}
-      ${r && r.snitt != null ? `<div class="sammenlign"><span>Du: <b>${min.stjerner ? nf1.format(min.stjerner) : "–"}</b></span>
-        <span>Kontoret: <b>${nf2.format(r.snitt)}</b> (${r.antall})</span><span>Untappd: <b>${r.score != null ? nf2.format(r.score) : "–"}</b></span></div>` : ""}
+      ${r && avslort(o.plass) ? `<div class="sammenlign"><span>Du: <b>${min.stjerner ? nf1.format(min.stjerner) : "–"}</b></span>
+        <span>Kontoret: <b>${r.snitt != null ? nf2.format(r.snitt) : "–"}</b> (${r.antall})</span><span>Untappd: <b>${r.score != null ? nf2.format(r.score) : "–"}</b></span></div>` : ""}
     </article>`;
   }).join("");
 }
@@ -200,8 +216,11 @@ async function lagre(plass) {
   } catch (e) {
     $(`lagret-${plass}`).textContent = e.message;
     if (e.status === 409) {
+      // Ølet ble avslørt eller runden avsluttet mens man ratet: vis det, og si hvorfor karakteren ikke kom med.
       runde = await api(`/${kode}`);
-      tegn();
+      resultat = await api(`/${kode}/resultater`);
+      tegnOgBehold();
+      $(`lagret-${plass}`).textContent = e.message;
     }
   }
 }
