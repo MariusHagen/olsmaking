@@ -4,10 +4,10 @@
 
 | Field | Value |
 |-------|-------|
-| Status | in-progress |
+| Status | completed |
 | Created | 2026-11-16 |
-| Completed | - |
-| Henger sammen med | [005](005-smakerunde.md) (smakerunden, ikke prøvd på Vercel ennå), [006](completed/006-lagre-rekka-og-avslor-ol-for-ol.md) (avsløring øl for øl) |
+| Completed | 2026-11-16 |
+| Henger sammen med | [005](../005-smakerunde.md) (smakerunden, ikke prøvd på Vercel ennå), [006](006-lagre-rekka-og-avslor-ol-for-ol.md) (avsløring øl for øl) |
 
 ## Kort fortalt
 
