@@ -62,20 +62,24 @@ flowchart LR
   - Et øl som ikke er åpnet: bare plassen, i både blind og åpen runde.
   - Ølet som smakes: i en blind runde plassen og antall karakterer, i en åpen også opplysningene om ølet.
   - Et avslørt øl: alt, som i dag.
-  - Toppnivået får `startet` i tillegg til feltene i dag.
+  - Toppnivået får `startet` og `na` (ølet som smakes) i tillegg til feltene i dag.
 - Ny rute `POST /api/runde/{kode}/rekkefolge` med vertnøkkelen og den nye rekkefølgen for ølene som ikke er
   åpnet, som en liste over plassene deres. Ølene får nye plasser etter den nye rekkefølgen. Lista må ha nøyaktig
   de ølene som ikke er åpnet, ellers 400. Ølet som smakes og de avslørte kan ikke flyttes, og de er de eneste
   som kan ha karakterer, så ingen karakter kan havne på feil øl. Uten riktig vertnøkkel 403, avsluttet 409.
-  Flytter og avslører verten fra to vinduer i samme øyeblikk, kan den ene endringen gå tapt, som for avsløringen
-  i dag. En flytting fra en gammel liste gir 400.
+  En flytting fra en gammel liste gir 400.
+- Verten skriver runden fra to vinduer, storskjermen og skjenkelista. Runden skrives derfor bare hvis den er lik
+  den som ble lest, med et lite skript i Redis (`SETT_HVIS_LIK` i `api/_lib/lager.mjs`, det eneste skriptet
+  lageret slipper gjennom). Ellers svarer `neste`, `rekkefolge` og `avslutt` 409 «Prøv igjen», så en flytting
+  aldri skriver over en avsløring. To trykk på «Neste øl» fra to skjermer i samme øyeblikk gir 200 på begge.
 - Avslutningen avslører alle ølene som før, også dem som ikke ble åpnet.
 
 ### 2. Deltakersiden
 
 `site/smak.html`:
 
-- Før første øl: «Verten åpner første øl snart», og hvor mange som har blitt med.
+- Før første øl: «Verten åpner første øl snart», og hvor mange øl det er. Hvor mange som har blitt med, står
+  bare på storskjermen, siden telefonene ellers måtte spurt etter resultatene hver gang.
 - Ølet som smakes står øverst og stort, med stjerner og kommentar. I en blind runde heter det «Øl 4».
 - Under står de smakte ølene med navn, «Du / Kontoret / Untappd» og låste stjerner. Rakk man ikke å rate et
   øl før det ble avslørt, står det «Du rakk ikke å rate dette».
@@ -108,7 +112,7 @@ flowchart LR
   åpner `vert.html#KODE/skjenk` i et eget vindu. Det vinduet har vertnøkkelen, siden det er samme nettleser,
   og viser bare ølene i rekkefølgen med navn og knapper for å flytte øl som ikke er åpnet opp og ned. Før
   første øl kan alle flyttes. Er TV-en en ekstra skjerm, står vinduet på vertens egen skjerm, så navnene ikke
-  vises på TV-en i en blind runde.
+  vises på TV-en i en blind runde. Vinduet henter runden når det får fokus, ikke med jevne mellomrom.
 - Etter avslutningen kan siden rulle: topplista er resultatet, og sammendraget og kommentarene kommer under.
   Utskrift og «Lagre som bilde» er som før.
 
@@ -147,26 +151,27 @@ flowchart LR
 
 ## Acceptance Criteria
 
-- [ ] API-testene dekker `neste`: ingen kan rate før start, bare ølet som smakes kan rates, bare vertnøkkelen
+- [x] API-testene dekker `neste`: ingen kan rate før start, bare ølet som smakes kan rates, bare vertnøkkelen
   kan gå videre, ølet som smakes går videre, et avslørt øl og 0 i en startet runde gir 200 uten endring (også
-  etter det siste ølet), et øl som ikke er åpnet gir 409, og avslutningen avslører alt
-- [ ] API-testene dekker flyttingen: bare vertnøkkelen, bare øl som ikke er åpnet, lista må ha nøyaktig de
+  etter det siste ølet), et øl som ikke er åpnet gir 409, avslutningen avslører alt, og to vinduer hos verten
+  skriver ikke over hverandre. Testen for to vinduer er sett feile på et bevisst brudd
+- [x] API-testene dekker flyttingen: bare vertnøkkelen, bare øl som ikke er åpnet, lista må ha nøyaktig de
   ølene, og karakterene for de smakte ølene står på samme øl etter en flytting
-- [ ] Testen av tillatte felter kjøres for både blind og åpen runde, før start, midt i og etter siste øl, og
+- [x] Testen av tillatte felter kjøres for både blind og åpen runde, før start, midt i og etter siste øl, og
   sjekker hvert øl i alle ruter uten vertnøkkel. Den er sett feile på et bevisst brudd der et øl som ikke er
   åpnet, får navnet sitt
-- [ ] Testen som teller kommandoene i en simulert runde med 15 personer, 10 øl og 90 minutter har start,
+- [x] Testen som teller kommandoene i en simulert runde med 15 personer, 10 øl og 90 minutter har start,
   `neste` og én flytting, og er under 8 000
-- [ ] `tests/qr.test.mjs` dekker størrelse, versjon og formatinformasjon, og `tools/sjekk-qr.mjs` får macOS'
+- [x] `tests/qr.test.mjs` dekker størrelse, versjon og formatinformasjon, og `tools/sjekk-qr.mjs` får macOS'
   QR-leser til å lese en kode i hver versjon fra 1 til 6. Sjekken er sett feile på et bevisst brudd i
   feilrettingen
-- [ ] Playwright lokalt, som en engangssjekk som ikke sjekkes inn: verten starter en blind runde, tre deltakere
+- [x] Playwright lokalt, som en engangssjekk som ikke sjekkes inn: verten starter en blind runde, tre deltakere
   blir med, ingen kan rate før «Åpne øl 1», telefonene får øl 1 uten at noe er avslørt, verten flytter øl 5
   foran øl 3 i skjenkelista, trykker «Neste øl» to ganger, og deltakerne ser bare de smakte ølene og det som
   smakes, i den nye rekkefølgen. Topplista er sortert på snitt
-- [ ] Storskjermen ruller ikke under runden med 12 øl i 1920 × 1080, 1440 × 900, 1280 × 720 og 1024 × 768,
+- [x] Storskjermen ruller ikke under runden med 12 øl i 1920 × 1080, 1440 × 900, 1280 × 720 og 1024 × 768,
   målt med Playwright. Skjermbilder av dem, av skjenkelista og av deltakersiden i 360 px, lyst og mørkt
-- [ ] `site/index.html`, `README.md`, `CLAUDE.md` og `docs/deploy.md` er oppdatert
+- [x] `site/index.html`, `README.md`, `CLAUDE.md` og `docs/deploy.md` er oppdatert
 
 ## Notes
 

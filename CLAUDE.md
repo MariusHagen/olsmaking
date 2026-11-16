@@ -20,6 +20,8 @@ Repoet og siden er offentlige.
   `api/_lib/smakerunde.mjs` med lageret i `api/_lib/lager.mjs` (Upstash via REST, eller minnet lokalt og i
   tester). `site/smak.html` er deltakersiden, `site/vert.html` storskjermen, og `site/oppsett.mjs` har adressen
   til API-et. Oppsettet på Vercel står i `docs/deploy.md`.
+- `site/qr.mjs` lager QR-koden på storskjermen uten bibliotek. Den testes med `node --test`, og
+  `tools/sjekk-qr.mjs` lar macOS' QR-leser lese en kode i hver versjon den kan lage.
 
 ## Kommandoer
 
@@ -29,6 +31,7 @@ python3 juleol.py                       # hent data til site/data/juleol.json (e
 python3 -m http.server -d site 8000     # siden lokalt på http://localhost:8000
 node tools/lokal-api.mjs                # API-et for smakerunden lokalt på port 8787, med minnelager
 node tools/lokal-api.mjs --lan          # det samme, og fra en telefon på samme Wi-Fi
+node tools/sjekk-qr.mjs                 # macOS' QR-leser leser QR-kodene (bare på Mac)
 ```
 
 ## Regler som ikke synes i koden
@@ -48,9 +51,10 @@ node tools/lokal-api.mjs --lan          # det samme, og fra en telefon på samme
 - Upstash-databasen deles med lunsjprosjektet. Alle nøkler har prefikset `olsmaking:`, og lageret avviser
   alt annet. Nye ruter må gå gjennom sikringene før lageret: ugyldig kode og ukjent rute avvises, bremsen per
   instans, og nødbryteren `SMAKERUNDE_AV=1`.
-- Før et øl er avslørt, får ingen andre enn verten se annet enn plassen i en blind runde, og ingen ser snitt
-  eller karakterer i noen runde. En test sjekker feltene for hvert øl mot en tillatt liste, og den må utvides
-  når nye felter kommer.
+- Uten vertnøkkelen viser et øl som ikke er åpnet, bare plassen, i både blind og åpen runde. Ølet som smakes,
+  viser i en blind runde bare plassen og antall karakterer. Ingen ser snitt eller karakterer før ølet er
+  avslørt. En test sjekker feltene for hvert øl mot en tillatt liste før start, midt i og etter siste øl, og
+  den må utvides når nye felter kommer.
 
 ## Tasks
 

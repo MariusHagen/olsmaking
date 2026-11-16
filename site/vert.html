@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="nb">
+<html lang="nb" class="storskjerm">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -7,45 +7,96 @@
 <meta name="theme-color" content="#133328">
 <link rel="stylesheet" href="felles.css">
 <style>
-/* Storskjermen: koden og lenken øverst, så én søyle per øl, sammendraget etter avslutningen. */
-.wrap { max-width: 72rem; }
-.hode-innhold { max-width: 72rem; padding-block: 14px 40px; }
+/* Storskjermen. På en liggende skjerm fra 1024 px fyller den skjermen uten rulling mens runden pågår: ølet som
+   smakes til venstre, topplista til høyre og QR-koden i hodet. Skriften skalerer med høyden, så den kan leses på
+   avstand. Smalere eller stående skjerm: ett felt under et annet. */
+.wrap { max-width: 72rem; gap: 28px; }
+.hode-innhold { max-width: 72rem; padding-block: 14px 34px; }
+.hode-rad { display: flex; gap: 16px 32px; align-items: center; justify-content: space-between; }
 .kode-boks { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: baseline; }
 .kode { font: 800 clamp(2.6rem, 8vw, 4.6rem)/1 var(--display); letter-spacing: .12em; color: var(--gull-lys); }
 .lenke { color: var(--hode-ink); font-size: 1.05rem; overflow-wrap: anywhere; }
 .julehode .knapp { background: transparent; color: var(--hode-ink); border-color: rgba(255, 255, 255, .35); }
-.kort { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; }
-.topp { margin-top: -24px; position: relative; box-shadow: 0 10px 30px -18px rgba(10, 30, 22, .45);
-  display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
-.tall { font: 800 1.6rem var(--display); font-variant-numeric: tabular-nums; }
+.qr svg { display: block; width: 100%; height: auto; border-radius: 6px; }
+.qr-hode { flex: 0 0 auto; width: 7.5rem; }
+.kort { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; align-content: start; }
+.scene { display: grid; gap: 20px; margin-top: -24px; position: relative; }
+.scene > .kort { box-shadow: 0 10px 30px -18px rgba(10, 30, 22, .45); }
+.etikett { font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--rod); }
+.na-navn { font-size: clamp(1.8rem, 5vw, 3rem); line-height: 1.1; overflow-wrap: anywhere; }
+.na-stil { color: var(--muted); }
+.qr-stor { width: min(100%, 18rem); }
 .feil { color: var(--danger); font-weight: 600; }
-.soyler { display: grid; gap: 14px; }
-.soyle { display: grid; grid-template-columns: minmax(7rem, 16rem) minmax(0, 1fr) 5.5rem; gap: 14px; align-items: center; }
-.soyle .navn { font-weight: 600; overflow-wrap: anywhere; }
+.soyler { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.soyle { display: grid; grid-template-columns: 2rem minmax(7rem, 15rem) minmax(0, 1fr) 5rem; gap: 12px; align-items: center; }
+.soyle .nr { font: 800 1.2rem var(--display); color: var(--rod); text-align: right; }
+.soyle .navn { font-weight: 600; overflow-wrap: anywhere; min-width: 0; }
 .soyle .navn small { display: block; font-weight: 400; color: var(--muted); font-size: .8rem; }
-.bane { position: relative; height: 28px; background: var(--accent-soft); border-radius: 8px; }
+.bane { position: relative; height: 1.6rem; background: var(--accent-soft); border-radius: 8px; }
 .fyll { position: absolute; inset: 0 auto 0 0; background: var(--rod); border-radius: 8px; transition: width .4s ease; }
 .untappd { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--gull); border-radius: 2px; }
 .snitt { font: 800 1.3rem var(--display); font-variant-numeric: tabular-nums; text-align: right; }
 .snitt small { display: block; font: 400 .78rem var(--body); color: var(--muted); }
 .fremdrift { position: absolute; inset: 0 auto 0 0; background: var(--line); border-radius: 8px; transition: width .4s ease; }
-.bane .tekst { position: absolute; inset: 0; display: flex; align-items: center; padding-inline: 12px; font-size: .85rem; color: var(--ink); }
-.venter .snitt { font: 400 .85rem var(--body); color: var(--muted); }
+.bane .tekst { position: absolute; inset: 0; display: flex; align-items: center; padding-inline: 12px; font-size: .9rem; color: var(--ink); }
+.bane.stor { height: 2.6rem; }
+.bane.stor .tekst { font-size: 1.1rem; font-weight: 600; }
+.topp-hode { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 18px; }
 .forklaring { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .85rem; color: var(--muted); }
 .forklaring i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; vertical-align: middle; margin-right: 6px; }
+.tom, .igjen { color: var(--muted); }
 .oppsummering { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 14px; }
 .oppsummering .kort { gap: 6px; }
-.oppsummering .etikett { font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--rod); }
+.oppsummering .etikett { letter-spacing: .06em; }
 .oppsummering b { font: 700 1.1rem var(--display); }
 .kommentarer { display: grid; gap: 10px; }
 .kommentarer h3 { font-size: 1rem; }
 .kommentarer ul { margin: 0; padding-left: 1.2rem; display: grid; gap: 4px; }
 .knapper { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-details summary { cursor: pointer; font-weight: 600; color: var(--rod); }
-details ol { margin: 10px 0 0; padding-left: 1.4rem; display: grid; gap: 4px; }
-@media (max-width: 640px) { .soyle { grid-template-columns: minmax(0, 1fr) 4.5rem; } .bane { grid-column: 1 / -1; grid-row: 2; } }
+a.knapp { text-decoration: none; display: inline-block; }
+.skjenk { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.skjenk li { display: grid; grid-template-columns: 3.2rem minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.skjenk li.fast { color: var(--muted); }
+.skjenk .nr { font: 800 1rem var(--display); color: var(--rod); }
+.skjenk small { display: block; color: var(--muted); font-size: .8rem; }
+.skjenk .flytt { display: flex; gap: 6px; }
+.skjenk .flytt .knapp { padding: 6px 12px; }
+.skjenk .flytt .knapp:disabled { opacity: .3; cursor: default; }
+#skjenk-del { padding-top: 24px; }
+@media (max-width: 640px) {
+  .hode-rad { flex-wrap: wrap; }
+  .soyle { grid-template-columns: 1.6rem minmax(0, 1fr) 4.5rem; }
+  .soyle .bane { grid-column: 2 / -1; grid-row: 2; }
+}
+@media (min-width: 1024px) and (orientation: landscape) {
+  html.storskjerm.runde { font-size: clamp(15px, 1.75vh, 30px); }
+  html.storskjerm.runde body { height: 100vh; height: 100dvh; overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+  .runde .hode-innhold, .runde .wrap { max-width: none; margin: 0; padding-inline: 3vw; }
+  .runde .hode-innhold { padding-block: 1.6vh 3.4vh; }
+  .runde .julelys { height: 3vh; }
+  .runde .kode { font-size: 7vh; }
+  .runde .lenke { font-size: 1.1rem; }
+  .runde .qr-hode { width: 15vh; }
+  .runde main.wrap { min-height: 0; padding-bottom: 2.4vh; grid-template-rows: minmax(0, 1fr); }
+  .runde .scene { grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); min-height: 0; height: 100%; margin-top: -2.4vh; }
+  .runde .scene > .kort { min-height: 0; overflow: hidden; padding: 2.4vh 1.6vw; gap: 1.8vh; }
+  .runde .na-navn { font-size: 6vh; }
+  .runde .qr-stor { width: 34vh; }
+  /* Én linje per øl, så 12 øl får plass: lange navn kortes av med «…», og typen vises ikke. */
+  .runde .soyler { gap: .7vh; }
+  .runde .soyle { grid-template-columns: 1.8rem minmax(0, 1.25fr) minmax(0, 1fr) 4rem; gap: .9vw; }
+  .runde .soyle .navn { display: flex; align-items: baseline; gap: .5em; white-space: nowrap; }
+  .runde .soyle .navn .tittel { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .runde .soyle .navn small { display: inline; flex: none; }
+  .runde .soyle .gruppe { display: none; }
+  .runde .bane { height: 1.25rem; }
+  .runde .bane.stor { height: 2.6rem; }
+  .runde .snitt { font-size: 1.15rem; }
+  .runde .snitt small { display: none; }
+  .runde footer, .runde #sammendrag, .runde #kommentar-del { display: none; }
+}
 @media print {
-  .julehode canvas, .julelys, .knapper, .ikke-utskrift, details { display: none !important; }
+  .julehode canvas, .julelys, .knapper, .ikke-utskrift, .qr { display: none !important; }
   .julehode { background: none; color: #000; }
   .kode { color: #000; }
   .eyebrow, .lenke { color: #333 !important; }
@@ -60,38 +111,54 @@ details ol { margin: 10px 0 0; padding-left: 1.4rem; display: grid; gap: 4px; }
   <canvas id="sno" aria-hidden="true"></canvas>
   <div class="julelys" aria-hidden="true"></div>
   <div class="hode-innhold sider">
-    <p class="eyebrow" id="undertittel">Smakerunde</p>
-    <div class="kode-boks">
-      <span class="kode" id="kode" aria-label="Koden til runden"></span>
-      <span class="lenke" id="lenke"></span>
-      <button type="button" class="knapp ikke-utskrift" id="kopier">Kopier lenken</button>
+    <div class="hode-rad">
+      <div>
+        <p class="eyebrow" id="undertittel">Smakerunde</p>
+        <div class="kode-boks">
+          <span class="kode" id="kode" aria-label="Koden til runden"></span>
+          <span class="lenke" id="lenke"></span>
+          <button type="button" class="knapp ikke-utskrift" id="kopier">Kopier lenken</button>
+        </div>
+      </div>
+      <div class="qr qr-hode" id="qr-hode" hidden></div>
     </div>
   </div>
 </header>
 
 <main class="wrap sider">
-  <section class="kort topp">
-    <div><span class="tall" id="har-ratet">0</span> <span id="har-ratet-tekst">har ratet</span></div>
-    <p id="status" role="status"></p>
-    <div class="knapper">
-      <button type="button" class="knapp primar" id="avslor" hidden>Avslør øl 1</button>
-      <button type="button" class="knapp" id="avslutt" hidden>Avslutt runden</button>
-      <button type="button" class="knapp" id="skriv-ut" hidden>Skriv ut</button>
-      <button type="button" class="knapp" id="bilde" hidden>Lagre som bilde</button>
-    </div>
+  <div class="scene" id="scene">
+    <section class="kort" id="na-kort" aria-live="polite">
+      <span class="etikett" id="na-etikett"></span>
+      <h2 class="na-navn" id="na-navn"></h2>
+      <p class="na-stil" id="na-stil" hidden></p>
+      <div class="qr qr-stor" id="qr-stor" hidden></div>
+      <div class="bane stor" id="na-bane" hidden><span class="fremdrift" id="na-fremdrift"></span><span class="tekst" id="na-ratet"></span></div>
+      <p id="status" role="status"></p>
+      <div class="knapper">
+        <button type="button" class="knapp primar" id="neste" hidden>Åpne øl 1</button>
+        <button type="button" class="knapp" id="avslutt" hidden>Avslutt runden</button>
+        <a class="knapp" id="skjenk-lenke" href="#" target="skjenkeliste" hidden>Skjenkeliste</a>
+        <button type="button" class="knapp" id="skriv-ut" hidden>Skriv ut</button>
+        <button type="button" class="knapp" id="bilde" hidden>Lagre som bilde</button>
+      </div>
+    </section>
+    <section class="kort" id="topp-del" aria-labelledby="topp-h">
+      <div class="topp-hode">
+        <h2 class="stjerne" id="topp-h">Topplista</h2>
+        <div class="forklaring"><span><i style="background:var(--rod)"></i>Kontorets snitt</span><span id="untappd-forkl" hidden><i style="background:var(--gull);width:4px"></i>Untappd</span></div>
+      </div>
+      <ol class="soyler" id="soyler"></ol>
+      <p class="igjen" id="igjen"></p>
+    </section>
+  </div>
+
+  <section class="section" id="skjenk-del" hidden>
+    <h2 class="stjerne">Skjenkeliste</h2>
+    <p id="skjenk-hjelp">Rekkefølgen dere smaker i. Flytt øl som ikke er åpnet, med pilene. Hold dette vinduet unna storskjermen i en blind runde.</p>
+    <ol class="skjenk" id="skjenk"></ol>
   </section>
+
   <p class="feil" id="feil" role="alert" hidden></p>
-
-  <details class="kort" id="skjenkeliste" hidden>
-    <summary>Skjenkeliste for verten</summary>
-    <ol id="skjenk"></ol>
-  </details>
-
-  <section class="section" aria-labelledby="res-h">
-    <h2 class="stjerne" id="res-h">Resultatet så langt</h2>
-    <div class="forklaring"><span><i style="background:var(--rod)"></i>Kontorets snitt</span><span id="untappd-forkl" hidden><i style="background:var(--gull);width:4px"></i>Untappd</span></div>
-    <div class="soyler" id="soyler"></div>
-  </section>
 
   <section class="section" id="sammendrag" hidden>
     <h2 class="stjerne">Sammendrag</h2>
@@ -106,14 +173,17 @@ details ol { margin: 10px 0 0; padding-left: 1.4rem; display: grid; gap: 4px; }
 </main>
 
 <script type="module">
-import { api, poll, esc, nf2, huskLes } from "./oppsett.mjs";
+import { api, poll, esc, nf1, nf2, huskLes } from "./oppsett.mjs";
 import { sno } from "./sno.mjs";
+import { qrSvg } from "./qr.mjs";
 
 const $ = (id) => document.getElementById(id);
-const kode = (location.hash.slice(1) || "").toUpperCase();
+const [kodeDel, visning] = location.hash.slice(1).split("/");
+const kode = (kodeDel || "").toUpperCase();
+const skjenkVindu = visning === "skjenk";
 const vertNokkel = huskLes(`olsmaking.vert.${kode}`);
 const deltakerLenke = new URL(`smak.html#${kode}`, location.href).href;
-let runde = null, res = null, bekreft = false, bekreftAvslor = null;
+let runde = null, res = null, bekreft = false, bekreftNeste = null;
 
 function visFeil(tekst) {
   $("feil").textContent = tekst;
@@ -124,16 +194,23 @@ async function start() {
   sno();
   $("kode").textContent = kode;
   $("lenke").textContent = deltakerLenke.replace(/^https?:\/\//, "");
+  if (skjenkVindu) return startSkjenk();
   try {
-    runde = await api(`/${kode}`, { hoder: vertNokkel ? { "X-Vertnokkel": vertNokkel } : {} });
+    // Uten vertnøkkelen, så storskjermen aldri har navnene på øl som ikke er åpnet.
+    runde = await api(`/${kode}`);
   } catch (e) {
     return visFeil(e.message);
   }
-  $("avslutt").hidden = !vertNokkel || runde.avsluttet;
   $("undertittel").textContent = `Smakerunde · ${runde.ol.length} øl${runde.blind ? " · blind" : ""}`;
-  if (vertNokkel && runde.ol[0]?.navn) {
-    $("skjenkeliste").hidden = false;
-    $("skjenk").innerHTML = runde.ol.map((o) => `<li>${esc(o.navn)} <span class="hjelp">${esc(o.stil ?? "")}</span></li>`).join("");
+  try {
+    const svg = qrSvg(deltakerLenke, { tittel: `QR-kode til ${deltakerLenke}` });
+    $("qr-hode").innerHTML = $("qr-stor").innerHTML = svg;
+  } catch {
+    // For lang lenke: lenken og koden står der uansett.
+  }
+  if (vertNokkel) {
+    $("skjenk-lenke").hidden = false;
+    $("skjenk-lenke").href = `vert.html#${kode}/skjenk`;
   }
   poll(async () => {
     res = await api(`/${kode}/resultater`);
@@ -142,38 +219,64 @@ async function start() {
   }, 5000);
 }
 
-const nesteAvslor = () => res.ol.find((o) => !res.avslort.includes(o.plass));
-const avslorTekst = (o) => `Avslør øl ${o.plass}`;
+const avslort = (o) => res.avslort.includes(o.plass);
+const lukkede = () => res.ol.filter((o) => !avslort(o) && o.plass !== res.na);
+// Høyest snitt først. Ved likt snitt flest karakterer, deretter rekkefølgen. Uten karakterer sist.
+const topplista = () => res.ol.filter(avslort).sort((a, b) => (b.snitt ?? -1) - (a.snitt ?? -1) || b.antall - a.antall || a.plass - b.plass);
 
 function tegn() {
-  const avslort = (o) => res.avslort.includes(o.plass);
-  $("har-ratet").textContent = res.harRatet;
-  $("res-h").textContent = res.avsluttet ? "Resultatet" : "Resultatet så langt";
-  $("status").textContent = res.avsluttet ? "Runden er avsluttet."
-    : `${res.deltakere} ${res.deltakere === 1 ? "deltaker" : "deltakere"}. Flere kan bli med på lenken eller med koden ${kode}.`;
-  $("untappd-forkl").hidden = !res.ol.some(avslort);
-  $("skriv-ut").hidden = $("bilde").hidden = !res.avsluttet;
-  $("avslutt").hidden = !vertNokkel || res.avsluttet;
-  const neste = nesteAvslor();
-  $("avslor").hidden = !vertNokkel || res.avsluttet || !neste;
-  if (neste && bekreftAvslor !== neste.plass) $("avslor").textContent = avslorTekst(neste);
-  $("soyler").innerHTML = res.ol.map((o) => {
-    const tittel = o.navn ? `${esc(o.navn)}<small>Øl ${o.plass} · ${esc(o.gruppe ?? "")}</small>` : `Øl ${o.plass}`;
-    const ratet = `${o.antall} av ${res.deltakere} har ratet`;
-    // Før avsløringen bare hvor mange som har ratet, så ingen blir påvirket av snittet.
-    if (!avslort(o)) {
-      const andel = res.deltakere ? Math.min(100, (o.antall / res.deltakere) * 100) : 0;
-      return `<div class="soyle venter"><div class="navn">${tittel}</div>
-        <div class="bane" role="img" aria-label="${ratet}"><span class="fremdrift" style="width:${andel}%"></span><span class="tekst">${ratet}</span></div>
-        <div class="snitt">Ikke avslørt</div></div>`;
-    }
+  const na = res.ol.find((o) => o.plass === res.na);
+  const fase = res.avsluttet ? "avsluttet" : !res.startet ? "for" : na ? "under" : "ferdig";
+  document.documentElement.classList.toggle("runde", fase !== "avsluttet");
+  $("qr-hode").hidden = fase !== "under" && fase !== "ferdig";
+  $("qr-stor").hidden = fase !== "for";
+  $("na-bane").hidden = fase !== "under";
+  $("na-stil").hidden = !(fase === "under" && na?.stil);
+  const deltakere = `${res.deltakere} ${res.deltakere === 1 ? "deltaker" : "deltakere"}`;
+  const igjen = lukkede().length;
+
+  if (fase === "for") {
+    $("na-etikett").textContent = "Bli med";
+    $("na-navn").textContent = "Skann koden med mobilen";
+    $("status").textContent = `${deltakere} så langt. Eller gå til lenken og skriv koden ${kode}.`;
+  } else if (fase === "under") {
+    $("na-etikett").textContent = "Nå smaker vi";
+    $("na-navn").textContent = na.navn ? `${na.navn}` : `Øl ${na.plass}`;
+    $("na-stil").textContent = na.stil ? `Øl ${na.plass} · ${na.gruppe} · ${na.stil}${na.alkohol ? ` · ${nf1.format(na.alkohol)} %` : ""}` : "";
+    const andel = res.deltakere ? Math.min(100, (na.antall / res.deltakere) * 100) : 0;
+    $("na-fremdrift").style.width = `${andel}%`;
+    $("na-ratet").textContent = `${na.antall} av ${res.deltakere} har ratet`;
+    $("status").textContent = `${deltakere}. Flere kan bli med på lenken eller med koden ${kode}.`;
+  } else if (fase === "ferdig") {
+    $("na-etikett").textContent = "Alle ølene er smakt";
+    $("na-navn").textContent = "Klart for resultatet";
+    $("status").textContent = `${deltakere}. Avslutt runden for å se sammendraget og kommentarene.`;
+  } else {
+    $("na-etikett").textContent = "Runden er avsluttet";
+    $("na-navn").textContent = "Takk for smakingen";
+    $("status").textContent = `${deltakere} og ${res.ol.length} øl.`;
+  }
+
+  const neste = $("neste");
+  neste.hidden = !vertNokkel || fase === "avsluttet" || fase === "ferdig";
+  if (bekreftNeste === null) neste.textContent = fase === "for" ? "Åpne øl 1" : igjen ? "Neste øl" : `Avslør øl ${na?.plass}`;
+  $("avslutt").hidden = !vertNokkel || fase === "avsluttet";
+  $("avslutt").classList.toggle("primar", fase === "ferdig");
+  $("skriv-ut").hidden = $("bilde").hidden = fase !== "avsluttet";
+
+  const liste = topplista();
+  $("untappd-forkl").hidden = liste.length === 0;
+  $("topp-h").textContent = fase === "avsluttet" ? "Resultatet" : "Topplista";
+  $("soyler").innerHTML = liste.length ? liste.map((o, i) => {
     const bredde = o.snitt ? (o.snitt / 5) * 100 : 0;
     const merke = o.score != null ? `<span class="untappd" style="left:calc(${(o.score / 5) * 100}% - 1.5px)" title="Untappd ${nf2.format(o.score)}"></span>` : "";
-    return `<div class="soyle"><div class="navn">${tittel}</div>
+    return `<li class="soyle"><span class="nr">${i + 1}</span>
+      <div class="navn"><span class="tittel">${esc(o.navn ?? `Øl ${o.plass}`)}</span><small>Øl ${o.plass}<span class="gruppe">${o.gruppe ? ` · ${esc(o.gruppe)}` : ""}</span></small></div>
       <div class="bane" role="img" aria-label="Snitt ${o.snitt ? nf2.format(o.snitt) : "ingen"}${o.score != null ? `, Untappd ${nf2.format(o.score)}` : ""}">
         <span class="fyll" style="width:${bredde}%"></span>${merke}</div>
-      <div class="snitt">${o.snitt ? nf2.format(o.snitt) : "–"}<small>${o.antall} ${o.antall === 1 ? "karakter" : "karakterer"}${o.score != null ? ` · U ${nf2.format(o.score)}` : ""}</small></div></div>`;
-  }).join("");
+      <div class="snitt">${o.snitt ? nf2.format(o.snitt) : "–"}<small>${o.antall} ${o.antall === 1 ? "karakter" : "karakterer"}${o.score != null ? ` · U ${nf2.format(o.score)}` : ""}</small></div></li>`;
+  }).join("") : `<li class="tom">Topplista fylles når verten går videre fra første øl.</li>`;
+  $("igjen").textContent = fase === "avsluttet" ? "" : igjen ? `${igjen} øl igjen${fase === "under" ? " etter dette" : ""}.` : "";
 
   const medKommentar = res.ol.filter((o) => o.karakterer?.some((k) => k.kommentar));
   $("kommentar-del").hidden = medKommentar.length === 0;
@@ -203,27 +306,34 @@ $("kopier").addEventListener("click", async () => {
   }
 });
 
-$("avslor").addEventListener("click", async () => {
-  const neste = nesteAvslor();
-  if (!neste) return;
-  // Har ikke alle ratet ølet, må verten trykke en gang til, siden karakterene låses ved avsløringen.
-  const mangler = Math.max(0, res.deltakere - neste.antall);
-  if (mangler > 0 && bekreftAvslor !== neste.plass) {
-    bekreftAvslor = neste.plass;
-    $("avslor").textContent = `${mangler} har ikke ratet øl ${neste.plass}. Trykk igjen for å avsløre.`;
-    setTimeout(() => { if (bekreftAvslor === neste.plass) { bekreftAvslor = null; if (res) tegn(); } }, 6000);
+$("skjenk-lenke").addEventListener("click", (e) => {
+  e.preventDefault();
+  window.open($("skjenk-lenke").href, "skjenkeliste", "popup,width=520,height=820");
+});
+
+$("neste").addEventListener("click", async () => {
+  const na = res.ol.find((o) => o.plass === res.na);
+  const plass = res.startet ? na?.plass : 0;
+  if (plass == null) return;
+  // Har ikke alle ratet ølet, må verten trykke en gang til, siden karakterene låses når verten går videre.
+  const mangler = na ? Math.max(0, res.deltakere - na.antall) : 0;
+  if (mangler > 0 && bekreftNeste !== plass) {
+    bekreftNeste = plass;
+    $("neste").textContent = `${mangler} har ikke ratet øl ${plass}. Trykk igjen for å gå videre.`;
+    setTimeout(() => { if (bekreftNeste === plass) { bekreftNeste = null; if (res) tegn(); } }, 6000);
     return;
   }
-  bekreftAvslor = null;
-  $("avslor").disabled = true;
+  bekreftNeste = null;
+  $("neste").disabled = true;
   try {
-    await api(`/${kode}/avslor`, { metode: "POST", body: { vertNokkel, plass: neste.plass } });
+    await api(`/${kode}/neste`, { metode: "POST", body: { vertNokkel, plass } });
     res = await api(`/${kode}/resultater`);
+    visFeil("");
     tegn();
   } catch (e) {
     visFeil(e.message);
   } finally {
-    $("avslor").disabled = false;
+    $("neste").disabled = false;
   }
 });
 
@@ -244,6 +354,69 @@ $("avslutt").addEventListener("click", async () => {
   }
 });
 
+/* Skjenkelista i eget vindu: samme nettleser, så vertnøkkelen er der. Den henter runden når vinduet får fokus,
+   ikke med jevne mellomrom, så den ikke bruker av kvoten. */
+let skjenkRunde = null;
+async function startSkjenk() {
+  document.title = "Skjenkeliste · Ølsmaking";
+  $("scene").hidden = true;
+  $("skjenk-del").hidden = false;
+  $("kopier").hidden = true;
+  if (!vertNokkel) {
+    $("skjenk-hjelp").textContent = "Skjenkelista finnes bare i nettleseren som startet runden.";
+    return;
+  }
+  const hent = async () => {
+    try {
+      skjenkRunde = await api(`/${kode}`, { hoder: { "X-Vertnokkel": vertNokkel } });
+      visFeil("");
+      tegnSkjenk();
+    } catch (e) {
+      visFeil(e.message);
+    }
+  };
+  window.addEventListener("focus", hent);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") hent(); });
+  await hent();
+}
+
+function tegnSkjenk() {
+  const r = skjenkRunde;
+  $("undertittel").textContent = `Skjenkeliste · ${r.ol.length} øl${r.blind ? " · blind" : ""}`;
+  const lukket = r.ol.filter((o) => !r.avslort.includes(o.plass) && o.plass !== r.na).map((o) => o.plass);
+  $("skjenk").innerHTML = r.ol.map((o) => {
+    const i = lukket.indexOf(o.plass);
+    const tilstand = r.avslort.includes(o.plass) ? "Avslørt" : o.plass === r.na ? "Smakes nå" : "";
+    const knapper = i < 0 || r.avsluttet ? `<span class="hjelp">${tilstand}</span>` : `<span class="flytt">
+      <button type="button" class="knapp" data-flytt="${o.plass}" data-retning="-1" aria-label="Flytt ${esc(o.navn)} opp" ${i === 0 ? "disabled" : ""}>↑</button>
+      <button type="button" class="knapp" data-flytt="${o.plass}" data-retning="1" aria-label="Flytt ${esc(o.navn)} ned" ${i === lukket.length - 1 ? "disabled" : ""}>↓</button></span>`;
+    return `<li class="${i < 0 ? "fast" : ""}"><span class="nr">Øl ${o.plass}</span>
+      <span>${esc(o.navn)}<small>${esc(o.gruppe ?? "")}${o.stil ? ` · ${esc(o.stil)}` : ""}</small></span>${knapper}</li>`;
+  }).join("");
+}
+
+$("skjenk").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-flytt]");
+  if (!b || b.disabled) return;
+  const r = skjenkRunde;
+  const lukket = r.ol.filter((o) => !r.avslort.includes(o.plass) && o.plass !== r.na).map((o) => o.plass);
+  const i = lukket.indexOf(Number(b.dataset.flytt)), j = i + Number(b.dataset.retning);
+  if (i < 0 || j < 0 || j >= lukket.length) return;
+  [lukket[i], lukket[j]] = [lukket[j], lukket[i]];
+  try {
+    skjenkRunde = await api(`/${kode}/rekkefolge`, { metode: "POST", body: { vertNokkel, rekkefolge: lukket } });
+    visFeil("");
+    tegnSkjenk();
+    // Ølet som ble flyttet, har fått plass j: hold fokus på samme pil, så verten kan trykke flere ganger.
+    const ny = skjenkRunde.ol.filter((o) => !skjenkRunde.avslort.includes(o.plass) && o.plass !== skjenkRunde.na)[j];
+    document.querySelector(`button[data-flytt="${ny?.plass}"][data-retning="${b.dataset.retning}"]:not(:disabled)`)?.focus();
+  } catch (e2) {
+    visFeil(e2.message);
+    skjenkRunde = await api(`/${kode}`, { hoder: { "X-Vertnokkel": vertNokkel } }).catch(() => skjenkRunde);
+    tegnSkjenk();
+  }
+});
+
 $("skriv-ut").addEventListener("click", () => window.print());
 
 // Korter av teksten med «…» så den får plass i bredden.
@@ -254,9 +427,9 @@ function tilpass(g, tekst, bredde) {
   return `${t.trimEnd()}…`;
 }
 
-/* Resultatet som et PNG-bilde, tegnet i nettleseren, så det kan tas vare på etter at runden er slettet. */
+/* Topplista som et PNG-bilde, tegnet i nettleseren, så den kan tas vare på etter at runden er slettet. */
 $("bilde").addEventListener("click", () => {
-  const rader = res.ol;
+  const rader = topplista();
   const B = 1200, topp = 150, radH = 64, s = res.sammendrag;
   const sammenH = s ? 150 : 0;
   const c = document.createElement("canvas");
@@ -270,7 +443,7 @@ $("bilde").addEventListener("click", () => {
   rader.forEach((o, i) => {
     const y = topp + i * radH;
     g.fillStyle = "#F4F1E8"; g.font = font(20, 600);
-    g.fillText(tilpass(g, `${o.plass}. ${o.navn || `Øl ${o.plass}`}`, 430), 48, y + 26);
+    g.fillText(tilpass(g, `${i + 1}. ${o.navn || `Øl ${o.plass}`}`, 430), 48, y + 26);
     g.fillStyle = "rgba(255,255,255,.12)"; g.fillRect(500, y + 8, 520, 26);
     g.fillStyle = "#E25858"; g.fillRect(500, y + 8, o.snitt ? (o.snitt / 5) * 520 : 0, 26);
     if (o.score != null) { g.fillStyle = "#EBC765"; g.fillRect(500 + (o.score / 5) * 520 - 2, y + 2, 4, 38); }

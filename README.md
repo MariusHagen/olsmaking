@@ -25,16 +25,20 @@ eller borte hos Polet. Den lagrede rekka finnes bare på den enheten; lenken er 
 
 ## Smakerunde
 
-Under rekka kan du starte en smakerunde. Du får en kode og en lenke som du deler med de andre, og en side for
-storskjerm. Alle blir med på mobilen med et kallenavn og gir hvert øl 1 til 5 stjerner i halve steg, med en
-valgfri kommentar. Mens dere smaker, viser storskjermen hvor mange som har ratet hvert øl. Når alle har smakt
-et øl, avslører du det: da låses karakterene for det ølet, og snittet, Untappd og kommentarene vises på
-storskjermen og hos alle. Når du avslutter, avsløres resten, og så kommer kontorets favoritt, det mest
+Under rekka kan du starte en smakerunde. Du får en side for storskjerm med en kode, en lenke og en QR-kode som
+de andre skanner med mobilen, og alle blir med med et kallenavn. Dere smaker ett øl om gangen. Du åpner første
+øl, alle gir det 1 til 5 stjerner i halve steg, med en valgfri kommentar, og storskjermen viser hvor mange som
+har ratet. Når alle har smakt, trykker du «Neste øl»: da låses karakterene for det ølet, snittet, Untappd og
+kommentarene vises på storskjermen og hos alle, ølet kommer inn på topplista, og neste øl åpnes. Hvilke øl som
+kommer, vises verken på telefonene eller på storskjermen. Når du avslutter, kommer kontorets favoritt, det mest
 omstridte ølet, den største overraskelsen og hvem som var mest enig med Untappd. Resultatet kan skrives ut
 eller lagres som bilde.
 
-Velger du blindsmaking, ser deltakerne bare «Øl 1», «Øl 2» til du avslører ølet. Du får en skjenkeliste over
-hvilken flaske som er hvilket nummer.
+Storskjermen er laget for en TV eller projektor i 16:9 og fyller skjermen uten rulling. I skjenkelista, som
+åpnes i et eget vindu, ser du rekkefølgen og kan flytte øl som ikke er åpnet ennå, også de alkoholfrie.
+
+Velger du blindsmaking, ser deltakerne bare «Øl 1», «Øl 2» til du går videre fra ølet. Hold da skjenkelista
+på din egen skjerm, ikke på storskjermen.
 
 **Hva som lagres:** kallenavnet, karakterene og kommentarene dine, i sju dager etter siste endring i runden.
 Så slettes alt. Vi lagrer ikke IP-adresser selv, men tjenestene vi bruker (Vercel og Upstash) fører egne
@@ -60,6 +64,7 @@ python3 juleol.py                       # henter data til site/data/juleol.json 
 python3 -m http.server -d site 8000     # siden på http://localhost:8000
 node tools/lokal-api.mjs                # smakerunden lokalt på port 8787, med minnelager
 node tools/lokal-api.mjs --lan          # det samme, og fra en telefon på samme Wi-Fi
+node tools/sjekk-qr.mjs                 # macOS' QR-leser leser QR-kodene (bare på Mac)
 tools/verifiser.sh                      # alle testene
 ```
 

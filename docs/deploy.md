@@ -29,19 +29,20 @@ A=https://olsmaking-api.vercel.app/api/runde
 curl -s -i -X OPTIONS -H "Origin: https://mariushagen.github.io" $A/ABCDEF/karakter | grep -i -E "^HTTP|allow-origin"
 # Ukjent kode: 404 med norsk feilmelding.
 curl -s $A/ABCDEF
-# Lag en runde, bli med, gi en karakter, avslør ølet, se resultatet og avslutt.
+# Lag en runde, bli med, åpne første øl, gi en karakter, gå videre, se resultatet og avslutt.
 R=$(curl -s -X POST -H "Content-Type: application/json" -d '{"ol":[{"navn":"Røyktest","score":3.5}]}' $A); echo "$R"
 K=$(echo "$R" | python3 -c "import json,sys; print(json.load(sys.stdin)['kode'])")
 V=$(echo "$R" | python3 -c "import json,sys; print(json.load(sys.stdin)['vertNokkel'])")
 D=$(curl -s -X POST -H "Content-Type: application/json" -d '{"kallenavn":"Test"}' $A/$K/deltaker); echo "$D"
+curl -s -X POST -H "Content-Type: application/json" -d "{\"vertNokkel\":\"$V\",\"plass\":0}" $A/$K/neste
 curl -s -X PUT -H "Content-Type: application/json" -d "$(echo "$D" | python3 -c "import json,sys; d=json.load(sys.stdin); print(json.dumps({'deltakerId': d['deltakerId'], 'deltakerNokkel': d['deltakerNokkel'], 'plass': 1, 'stjerner': 4}))")" $A/$K/karakter
-curl -s -X POST -H "Content-Type: application/json" -d "{\"vertNokkel\":\"$V\",\"plass\":1}" $A/$K/avslor
+curl -s -X POST -H "Content-Type: application/json" -d "{\"vertNokkel\":\"$V\",\"plass\":1}" $A/$K/neste
 curl -s $A/$K/resultater
 curl -s -X POST -H "Content-Type: application/json" -d "{\"vertNokkel\":\"$V\"}" $A/$K/avslutt
 ```
 
-Alle kallene skal svare uten «Fant ikke det du lette etter». Start så en runde fra siden, bli med fra to
-telefoner, rate, avslør ett øl, og avslutt.
+Alle kallene skal svare uten «Fant ikke det du lette etter». Start så en runde fra siden, skann QR-koden fra
+to telefoner, åpne første øl, rate, trykk «Neste øl», flytt et øl i skjenkelista, og avslutt.
 
 ## Nødbryteren
 
@@ -52,5 +53,5 @@ deploy på nytt for å slå smakerunden på igjen.
 
 ## Bruken av kvoten
 
-En runde med 15 personer, 10 øl og 90 minutter bruker rundt 7 500 kommandoer i Upstash, og gratisnivået har
+En runde med 15 personer, 10 øl og 90 minutter bruker rundt 7 450 kommandoer i Upstash, og gratisnivået har
 500 000 i måneden, delt med lunsjprosjektet. Bruken står i Upstash-konsollen.

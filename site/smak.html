@@ -33,6 +33,11 @@ textarea { resize: vertical; min-height: 2.6rem; font-size: .95rem; }
 .sammenlign b { color: var(--gull); }
 .vent { color: var(--muted); }
 #smaking { padding-top: 28px; }
+/* Ølet som smakes står øverst og stort. De smakte kommer under, det siste først. */
+.ol.na { border: 2px solid var(--gull); }
+.ol.na .stjerner button { font-size: 2.8rem; }
+.etikett { font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.smakt-h { margin-top: 12px; font-size: 1.05rem; }
 </style>
 </head>
 <body>
@@ -42,7 +47,7 @@ textarea { resize: vertical; min-height: 2.6rem; font-size: .95rem; }
   <div class="hode-innhold sider">
     <p class="eyebrow">Smakerunde</p>
     <h1 id="tittel">Bli med på smakingen</h1>
-    <p class="lead" id="ingress">Gi hvert øl 1 til 5 stjerner. Trykk to ganger på samme stjerne for en halv.</p>
+    <p class="lead" id="ingress">Ett øl om gangen. Gi hvert øl 1 til 5 stjerner. Trykk to ganger på samme stjerne for en halv.</p>
   </div>
 </header>
 
@@ -131,10 +136,11 @@ $("navn-skjema").addEventListener("submit", async (e) => {
 
 function visIngress() {
   const om = `${runde.ol.length} øl${runde.blind ? ", smakt blindt" : ""}.`;
-  $("ingress").textContent = runde.avsluttet ? om : `${om} Gi hvert av dem 1 til 5 stjerner. Trykk to ganger på samme stjerne for en halv.`;
+  $("ingress").textContent = runde.avsluttet ? om : `${om} Ett om gangen. Gi hvert øl 1 til 5 stjerner. Trykk to ganger på samme stjerne for en halv.`;
 }
 
 const avslort = (plass) => runde.avsluttet || (runde.avslort ?? []).includes(plass);
+const nyttAvslort = (ny) => ny.avsluttet !== runde.avsluttet || (ny.avslort ?? []).length !== (runde.avslort ?? []).length;
 
 async function visSmaking() {
   $("inngang").hidden = true;
@@ -143,14 +149,14 @@ async function visSmaking() {
   if (runde.avsluttet || runde.avslort?.length) resultat = await api(`/${kode}/resultater`);
   tegn();
   if (!runde.avsluttet && meg) {
-    // Spør etter runden hvert 30. sekund, og henter resultatene bare når verten har avslørt noe nytt.
+    // Spør etter runden hvert 30. sekund og med en gang fanen blir synlig. Tegner på nytt når verten har åpnet
+    // et øl, og henter resultatene bare når et øl er avslørt.
     stoppPoll = poll(async () => {
       const ny = await api(`/${kode}`);
-      if (ny.avsluttet === runde.avsluttet && (ny.avslort ?? []).length === (runde.avslort ?? []).length) return;
+      if (!nyttAvslort(ny) && ny.startet === runde.startet && ny.na === runde.na) return;
       // Resultatene først: feiler kallet, prøver neste runde igjen, siden runden da ikke er byttet ut.
-      const nyttResultat = await api(`/${kode}/resultater`);
+      if (nyttAvslort(ny)) resultat = await api(`/${kode}/resultater`);
       runde = ny;
-      resultat = nyttResultat;
       tegnOgBehold();
       if (ny.avsluttet) return "stopp";
     }, 30000);
@@ -169,8 +175,6 @@ function tegnOgBehold() {
   if (aktiv) $(aktiv)?.focus();
 }
 
-const alleRatet = () => runde.ol.every((o) => mine[o.plass]?.stjerner);
-
 function stjerneKnapper(plass, v, laast) {
   return [1, 2, 3, 4, 5].map((n) => {
     const kl = v >= n ? "full" : v === n - 0.5 ? "halv" : "";
@@ -178,34 +182,47 @@ function stjerneKnapper(plass, v, laast) {
   }).join("");
 }
 
+function olKort(o, res) {
+  const min = mine[o.plass] ?? {};
+  const r = res[o.plass];
+  const na = o.plass === runde.na;
+  const laast = !meg || !na;
+  const navn = o.navn ? `<span>${esc(o.navn)}</span>` : "";
+  const verdi = min.stjerner ? `${nf1.format(min.stjerner)} av 5` : na ? "Ikke ratet" : "Du rakk ikke å rate dette";
+  return `<article class="kort ol${na ? " na" : ""}" id="ol-${o.plass}">
+    ${na ? `<span class="etikett">Nå smaker vi</span>` : ""}
+    <h3><span class="nr">Øl ${o.plass}</span>${navn}</h3>
+    ${o.stil ? `<span class="stil">${esc(o.gruppe)} · ${esc(o.stil)}${o.alkohol ? ` · ${nf1.format(o.alkohol)} %` : ""}</span>` : ""}
+    <div class="rad">
+      <div class="stjerner" role="group" aria-label="Stjerner for øl ${o.plass}">${stjerneKnapper(o.plass, min.stjerner, laast)}</div>
+      <span class="verdi">${verdi}</span>
+      <span class="lagret" id="lagret-${o.plass}" role="status"></span>
+    </div>
+    ${laast ? (min.kommentar ? `<p>«${esc(min.kommentar)}»</p>` : "")
+      : `<label class="hjelp" for="kom-${o.plass}">Kommentar (valgfri)</label>
+         <textarea id="kom-${o.plass}" data-plass="${o.plass}" maxlength="140" rows="2">${esc(min.kommentar ?? "")}</textarea>`}
+    ${r && avslort(o.plass) ? `<div class="sammenlign"><span>Du: <b>${min.stjerner ? nf1.format(min.stjerner) : "–"}</b></span>
+      <span>Kontoret: <b>${r.snitt != null ? nf2.format(r.snitt) : "–"}</b> (${r.antall})</span><span>Untappd: <b>${r.score != null ? nf2.format(r.score) : "–"}</b></span></div>` : ""}
+  </article>`;
+}
+
 function tegn() {
   visIngress();
   const res = resultat ? Object.fromEntries(resultat.ol.map((o) => [o.plass, o])) : {};
+  const na = runde.ol.find((o) => o.plass === runde.na);
+  const smakt = runde.ol.filter((o) => avslort(o.plass));
+  const igjen = runde.ol.filter((o) => !avslort(o.plass) && o.plass !== runde.na).length;
+  const igjenTekst = igjen ? ` ${igjen} øl igjen etter dette.` : " Dette er det siste ølet.";
   $("smaking-h").textContent = runde.avsluttet ? "Resultatet" : "Ølene";
-  $("status").textContent = runde.avsluttet
-    ? "Verten har avsluttet runden. Her er det du ga, kontorets snitt og Untappd."
-    : alleRatet() ? "Takk! Du har ratet alt. Resultatene kommer her når verten avslører ølene."
-    : runde.blind ? "Navnene vises når verten avslører hvert øl." : "Snittet vises når verten avslører hvert øl.";
-  $("liste").innerHTML = runde.ol.map((o) => {
-    const min = mine[o.plass] ?? {};
-    const r = res[o.plass];
-    const laast = !meg || avslort(o.plass);
-    const navn = o.navn ? `<span>${esc(o.navn)}</span>` : "";
-    return `<article class="kort ol" id="ol-${o.plass}">
-      <h3><span class="nr">Øl ${o.plass}</span>${navn}</h3>
-      ${o.stil ? `<span class="stil">${esc(o.gruppe)} · ${esc(o.stil)}${o.alkohol ? ` · ${nf1.format(o.alkohol)} %` : ""}</span>` : ""}
-      <div class="rad">
-        <div class="stjerner" role="group" aria-label="Stjerner for øl ${o.plass}">${stjerneKnapper(o.plass, min.stjerner, laast)}</div>
-        <span class="verdi">${min.stjerner ? `${nf1.format(min.stjerner)} av 5` : "Ikke ratet"}</span>
-        <span class="lagret" id="lagret-${o.plass}" role="status"></span>
-      </div>
-      ${laast ? (min.kommentar ? `<p>«${esc(min.kommentar)}»</p>` : "")
-        : `<label class="hjelp" for="kom-${o.plass}">Kommentar (valgfri)</label>
-           <textarea id="kom-${o.plass}" data-plass="${o.plass}" maxlength="140" rows="2">${esc(min.kommentar ?? "")}</textarea>`}
-      ${r && avslort(o.plass) ? `<div class="sammenlign"><span>Du: <b>${min.stjerner ? nf1.format(min.stjerner) : "–"}</b></span>
-        <span>Kontoret: <b>${r.snitt != null ? nf2.format(r.snitt) : "–"}</b> (${r.antall})</span><span>Untappd: <b>${r.score != null ? nf2.format(r.score) : "–"}</b></span></div>` : ""}
-    </article>`;
-  }).join("");
+  $("status").textContent = runde.avsluttet ? "Verten har avsluttet runden. Her er det du ga, kontorets snitt og Untappd."
+    : !runde.startet ? `Verten åpner første øl snart. Ølene kommer her ett om gangen, ${runde.ol.length} i alt.`
+    : !na ? "Alle ølene er smakt. Verten avslutter runden snart."
+    : mine[na.plass]?.stjerner ? `Takk! Neste øl kommer når verten går videre.${igjenTekst}`
+    : `${runde.blind ? "Navnet og snittet vises" : "Snittet vises"} når verten går videre.${igjenTekst}`;
+  // Etter avslutningen står ølene i rekkefølgen. Ellers står ølet som smakes øverst, og så de smakte, det siste først.
+  const smakteKort = (runde.avsluttet ? smakt : [...smakt].reverse()).map((o) => olKort(o, res)).join("");
+  $("liste").innerHTML = (na ? olKort(na, res) : "")
+    + (smakt.length && !runde.avsluttet ? `<h3 class="smakt-h">Smakt</h3>` : "") + smakteKort;
 }
 
 async function lagre(plass) {
@@ -218,9 +235,10 @@ async function lagre(plass) {
   } catch (e) {
     $(`lagret-${plass}`).textContent = e.message;
     if (e.status === 409) {
-      // Ølet ble avslørt eller runden avsluttet mens man ratet: vis det, og si hvorfor karakteren ikke kom med.
-      runde = await api(`/${kode}`);
-      resultat = await api(`/${kode}/resultater`);
+      // Verten gikk videre eller avsluttet mens man ratet: vis det, og si hvorfor karakteren ikke kom med.
+      const ny = await api(`/${kode}`);
+      if (nyttAvslort(ny)) resultat = await api(`/${kode}/resultater`);
+      runde = ny;
       tegnOgBehold();
       $(`lagret-${plass}`).textContent = e.message;
     }

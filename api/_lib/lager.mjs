@@ -4,10 +4,17 @@
 
 export const PREFIKS = "olsmaking:";
 
+// Skriver en verdi bare hvis den lagrede er lik den som ble lest, i ett steg hos Redis. Svarer «OK», eller 0
+// hvis noen har skrevet i mellomtiden. Det eneste skriptet som slipper gjennom.
+export const SETT_HVIS_LIK = "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3]) else return 0 end";
+
 function sjekkNokler(kommandoer) {
   for (const k of kommandoer) {
-    if (typeof k[1] !== "string" || !k[1].startsWith(PREFIKS)) {
-      throw new Error(`Kommando uten prefiks på nøkkelen: ${k[0]} ${k[1]}`);
+    const skript = String(k[0]).toUpperCase() === "EVAL";
+    if (skript && k[1] !== SETT_HVIS_LIK) throw new Error("Bare skriptet SETT_HVIS_LIK kan kjøres.");
+    const nokler = skript ? k.slice(3, 3 + Number(k[2])) : [k[1]];
+    if (nokler.length === 0 || !nokler.every((n) => typeof n === "string" && n.startsWith(PREFIKS))) {
+      throw new Error(`Kommando uten prefiks på nøkkelen: ${k[0]} ${nokler.join(" ")}`);
     }
   }
 }
@@ -115,6 +122,7 @@ export function minnelager(klokke = () => Date.now()) {
       return n;
     },
     ZCARD: (k) => lever(k)?.verdi.size ?? 0,
+    EVAL: (_skript, _antall, k, forventet, ny, sekunder) => ((lever(k)?.verdi ?? null) === forventet ? kommando.SET(k, ny, "EX", sekunder) : 0),
   };
   return {
     async kjor(kommandoer) {

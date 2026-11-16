@@ -2,7 +2,7 @@
 // den lokale serveren kan kalle den direkte uten Vercel.
 
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { PREFIKS } from "./lager.mjs";
+import { PREFIKS, SETT_HVIS_LIK } from "./lager.mjs";
 
 export const LEVETID = 7 * 24 * 3600; // sekunder, regnet fra siste endring
 export const MAKS = { ol: 12, deltakere: 50, kallenavn: 30, kommentar: 140, nyePerTime: 20, aktive: 100, kallPerMinutt: 600 };
@@ -102,7 +102,7 @@ function finnRute(request) {
   const kode = deler[0].toUpperCase();
   if (!KODE.test(kode) || deler.length > 2) return null;
   const ruter = { "GET:": hentRunde, "POST:deltaker": bliMed, "PUT:karakter": giKarakter, "GET:resultater": resultater,
-    "POST:avslor": avslor, "POST:avslutt": avslutt };
+    "POST:neste": neste, "POST:rekkefolge": rekkefolge, "POST:avslutt": avslutt };
   const handling = ruter[`${m}:${deler[1] ?? ""}`];
   return handling ? { handling, kode } : null;
 }
@@ -127,22 +127,33 @@ const tilObjekt = (flat) => {
 };
 const fornyAlle = (kode) => [nokkel.runde(kode), nokkel.deltakere(kode), nokkel.karakterer(kode)].map((k) => ["EXPIRE", k, LEVETID]);
 
+// Teksten runden ble lest som, så den bare skrives tilbake hvis ingen har endret den i mellomtiden.
+const lestSom = new WeakMap();
+
 async function hentRundeEllerFeil(lager, kode, ekstra = []) {
   const [r, ...resten] = await lager.kjor([["GET", nokkel.runde(kode)], ...ekstra]);
   if (!r) throw new Klientfeil(404, "Fant ingen runde med den koden. Sjekk koden, eller om runden er slettet.");
-  return [tolk(r), ...resten];
+  const runde = tolk(r);
+  lestSom.set(runde, r);
+  return [runde, ...resten];
 }
 
-// Et øl er avslørt når verten har avslørt det, eller når runden er avsluttet. Runder fra før avsløringen
-// fantes, har ingen liste.
+// Et øl er avslørt når verten har gått videre fra det, eller når runden er avsluttet. Runder fra før
+// avsløringen fantes, har ingen liste, og runder fra før «Åpne øl 1» fantes, regnes som startet.
 const avslorte = (r) => (r.avsluttet ? r.ol.map((o) => o.plass) : (r.avslort ?? []));
 const erAvslort = (r, plass) => r.avsluttet || (r.avslort ?? []).includes(plass);
+const erStartet = (r) => r.startet !== false;
+// Ølet som smakes: det første som ikke er avslørt, når runden er startet og ikke avsluttet.
+const smakesNa = (r) => (!erStartet(r) || r.avsluttet ? null : (r.ol.find((o) => !erAvslort(r, o.plass))?.plass ?? null));
 
-// Hva alle får se. I en blind runde har et øl som ikke er avslørt, bare plassen sin.
+// Hva alle får se. Et øl som ikke er åpnet, har bare plassen sin, så ingen ser hva som kommer. Ølet som smakes,
+// har bare plassen i en blind runde.
 export function visRunde(r, erVert) {
+  const na = smakesNa(r);
+  const skjult = (o) => !erAvslort(r, o.plass) && (o.plass !== na || r.blind);
   return {
-    kode: r.kode, blind: r.blind, avsluttet: r.avsluttet, opprettet: r.opprettet, avslort: avslorte(r),
-    ol: r.ol.map((o) => (r.blind && !erVert && !erAvslort(r, o.plass) ? { plass: o.plass } : { ...o })),
+    kode: r.kode, blind: r.blind, avsluttet: r.avsluttet, opprettet: r.opprettet, startet: erStartet(r), na,
+    avslort: avslorte(r), ol: r.ol.map((o) => (!erVert && skjult(o) ? { plass: o.plass } : { ...o })),
   };
 }
 
@@ -166,7 +177,8 @@ async function lagRunde({ request, lager, klokke }) {
   const vertNokkel = nyNokkel();
   for (let forsok = 0; forsok < 5; forsok++) {
     const kode = nyKode();
-    const runde = { kode, opprettet: na, blind: inn.blind === true, avsluttet: false, avslort: [], vert: hash(vertNokkel), ol: kopi };
+    const runde = { kode, opprettet: na, blind: inn.blind === true, startet: false, avsluttet: false, avslort: [],
+      vert: hash(vertNokkel), ol: kopi };
     const [ok] = await lager.kjor([["SET", nokkel.runde(kode), JSON.stringify(runde), "NX", "EX", LEVETID]]);
     if (ok === "OK") {
       await lager.kjor([["ZADD", nokkel.aktive, na, kode], ["EXPIRE", nokkel.aktive, LEVETID]]);
@@ -210,24 +222,67 @@ async function giKarakter({ request, lager, kode }) {
   if (!d || !lik(hash(String(inn.deltakerNokkel ?? "")), d.nokkel)) throw new Klientfeil(403, "Du kan bare endre dine egne karakterer.");
   if (r.avsluttet) throw new Klientfeil(409, "Runden er avsluttet, så karakterene kan ikke endres.");
   if (erAvslort(r, plass)) throw new Klientfeil(409, `Øl ${plass} er avslørt, så karakteren kan ikke endres.`);
+  if (!erStartet(r)) throw new Klientfeil(409, "Verten har ikke åpnet første øl ennå.");
+  if (plass !== smakesNa(r)) throw new Klientfeil(409, `Øl ${plass} er ikke åpnet ennå.`);
   await lager.kjor([["HSET", nokkel.karakterer(kode), `${id}:${plass}`, JSON.stringify({ stjerner, kommentar })], ...fornyAlle(kode)]);
   return { status: 200, body: { ok: true } };
 }
 
-// Verten avslører ett øl: karakterene for det låses, og navnet, snittet og karakterene blir synlige for alle.
-// Bare verten skriver runden, så bare verten selv kan miste en endring: to avsløringer, eller en avsløring og
-// en avslutning, fra to skjermer i samme øyeblikk. En karakter som er underveis i det ølet avsløres, kan komme
-// med i snittet.
-async function avslor({ request, lager, kode }) {
+// Bare verten skriver runden, men fra flere vinduer: storskjermen og skjenkelista. Runden skrives derfor bare
+// hvis den er lik den som ble lest, så to trykk i samme øyeblikk ikke skriver over hverandre, og ingen karakter
+// havner på feil øl fordi en flytting skrev over en avsløring.
+async function lagreRunde(lager, kode, lest, ny) {
+  const [ok] = await lager.kjor([["EVAL", SETT_HVIS_LIK, 1, nokkel.runde(kode), lestSom.get(lest), JSON.stringify(ny), LEVETID],
+    ...fornyAlle(kode).slice(1)]);
+  if (ok !== "OK") throw new Klientfeil(409, "Runden ble endret fra et annet vindu samtidig. Prøv igjen.");
+}
+
+// Verten går videre: plass 0 åpner første øl, og plassen til ølet som smakes avslører det og åpner det neste.
+// Karakterene for det avslørte ølet låses, og navnet, snittet og karakterene blir synlige for alle. Et øl som
+// allerede er avslørt, eller 0 i en startet runde, gir 200 uten endring, så et dobbelttrykk eller to skjermer
+// ikke hopper over et øl. En karakter som er underveis i det ølet avsløres, kan komme med i snittet.
+async function neste({ request, lager, kode }) {
   const inn = await lesJson(request);
   const [r] = await hentRundeEllerFeil(lager, kode);
-  if (!lik(hash(String(inn.vertNokkel ?? "")), r.vert)) throw new Klientfeil(403, "Bare verten kan avsløre øl.");
+  if (!lik(hash(String(inn.vertNokkel ?? "")), r.vert)) throw new Klientfeil(403, "Bare verten kan gå videre.");
   if (r.avsluttet) throw new Klientfeil(409, "Runden er avsluttet.");
-  const plass = Number(inn.plass);
-  if (!Number.isInteger(plass) || plass < 1 || plass > r.ol.length) throw new Klientfeil(400, "Ukjent plass i rekka.");
-  const ny = { ...r, avslort: [...new Set([...(r.avslort ?? []), plass])].sort((a, b) => a - b) };
-  await lager.kjor([["SET", nokkel.runde(kode), JSON.stringify(ny), "EX", LEVETID], ...fornyAlle(kode).slice(1)]);
+  const plass = Number.isInteger(inn.plass) ? inn.plass : NaN;
+  if (!(plass >= 0 && plass <= r.ol.length)) throw new Klientfeil(400, "Ukjent plass i rekka.");
+  const alleredeGjort = (runde) => (plass === 0 ? erStartet(runde) : erAvslort(runde, plass));
+  if (alleredeGjort(r)) return { status: 200, body: visRunde(r, true) };
+  if (plass !== 0 && !erStartet(r)) throw new Klientfeil(409, "Runden er ikke startet ennå.");
+  if (plass !== 0 && plass !== smakesNa(r)) throw new Klientfeil(409, `Øl ${plass} er ikke åpnet ennå.`);
+  const ny = plass === 0 ? { ...r, startet: true } : { ...r, avslort: [...new Set([...(r.avslort ?? []), plass])].sort((a, b) => a - b) };
+  try {
+    await lagreRunde(lager, kode, r, ny);
+  } catch (e) {
+    // Et trykk fra en annen skjerm kom først. Gjorde det det samme, er det ikke en feil.
+    const [naa] = await hentRundeEllerFeil(lager, kode);
+    if (e.status === 409 && naa.avsluttet) throw new Klientfeil(409, "Runden er avsluttet.");
+    if (e.status === 409 && alleredeGjort(naa)) return { status: 200, body: visRunde(naa, true) };
+    throw e;
+  }
   return { status: 200, body: visRunde(ny, true) };
+}
+
+// Verten flytter øl som ikke er åpnet. De får nye plasser etter den nye rekkefølgen. Ølet som smakes og de
+// avslørte står fast, og de er de eneste som kan ha karakterer, så ingen karakter havner på feil øl.
+async function rekkefolge({ request, lager, kode }) {
+  const inn = await lesJson(request);
+  const [r] = await hentRundeEllerFeil(lager, kode);
+  if (!lik(hash(String(inn.vertNokkel ?? "")), r.vert)) throw new Klientfeil(403, "Bare verten kan endre rekkefølgen.");
+  if (r.avsluttet) throw new Klientfeil(409, "Runden er avsluttet.");
+  const na = smakesNa(r);
+  const lukket = r.ol.filter((o) => !erAvslort(r, o.plass) && o.plass !== na).map((o) => o.plass);
+  const ny = Array.isArray(inn.rekkefolge) ? inn.rekkefolge : [];
+  const sammeOl = ny.length === lukket.length && ny.every((p) => Number.isInteger(p)) && new Set(ny).size === ny.length
+    && ny.every((p) => lukket.includes(p));
+  if (!sammeOl) throw new Klientfeil(400, "Rekkefølgen må ha nøyaktig de ølene som ikke er åpnet. Hent runden på nytt.");
+  const etterPlass = new Map(r.ol.map((o) => [o.plass, o]));
+  const flyttet = new Map(ny.map((fra, i) => [lukket[i], { ...etterPlass.get(fra), plass: lukket[i] }]));
+  const nyRunde = { ...r, ol: r.ol.map((o) => flyttet.get(o.plass) ?? o) };
+  await lagreRunde(lager, kode, r, nyRunde);
+  return { status: 200, body: visRunde(nyRunde, true) };
 }
 
 async function avslutt({ request, lager, kode }) {
@@ -235,7 +290,7 @@ async function avslutt({ request, lager, kode }) {
   const [r] = await hentRundeEllerFeil(lager, kode);
   if (!lik(hash(String(inn.vertNokkel ?? "")), r.vert)) throw new Klientfeil(403, "Bare verten kan avslutte runden.");
   const ny = { ...r, avsluttet: true, avslort: r.ol.map((o) => o.plass) };
-  await lager.kjor([["SET", nokkel.runde(kode), JSON.stringify(ny), "EX", LEVETID], ...fornyAlle(kode).slice(1)]);
+  await lagreRunde(lager, kode, r, ny);
   return { status: 200, body: visRunde(ny, true) };
 }
 
@@ -252,9 +307,10 @@ async function resultater({ lager, kode }) {
 
 const snitt = (l) => l.reduce((s, x) => s + x, 0) / l.length;
 
-// Et øl som ikke er avslørt, har plassen og antall karakterer, og i en åpen runde også opplysningene om ølet.
-// Snitt og karakterer kommer først når det er avslørt, i både blind og åpen runde.
+// Et øl som ikke er åpnet, har bare plassen. Ølet som smakes, har plassen og antall karakterer, og i en åpen
+// runde også opplysningene om ølet. Snitt og karakterer kommer først når det er avslørt, i både blind og åpen runde.
 export function regnUt(runde, karakterer, deltakere, antallDeltakere = Object.keys(deltakere).length) {
+  const na = smakesNa(runde);
   const per = {};
   for (const [nok, v] of Object.entries(karakterer)) {
     const skille = nok.lastIndexOf(":");
@@ -266,6 +322,7 @@ export function regnUt(runde, karakterer, deltakere, antallDeltakere = Object.ke
     const s = k.map((x) => x.stjerner);
     const ut = { plass: o.plass, antall: s.length };
     const omOlet = { navn: o.navn, gruppe: o.gruppe, stil: o.stil, score: o.score, alkohol: o.alkohol, cl: o.cl, pris: o.pris, id: o.id, polet: o.polet };
+    if (!erAvslort(runde, o.plass) && o.plass !== na) return { plass: o.plass };
     if (!erAvslort(runde, o.plass)) return runde.blind ? ut : { ...ut, ...omOlet };
     const m = s.length ? snitt(s) : null;
     return {
@@ -275,8 +332,8 @@ export function regnUt(runde, karakterer, deltakere, antallDeltakere = Object.ke
     };
   });
   const harRatet = new Set(Object.keys(karakterer).map((nok) => nok.slice(0, nok.lastIndexOf(":"))));
-  const ut = { kode: runde.kode, blind: runde.blind, avsluttet: runde.avsluttet, avslort: avslorte(runde), harRatet: harRatet.size,
-    deltakere: antallDeltakere, ol };
+  const ut = { kode: runde.kode, blind: runde.blind, avsluttet: runde.avsluttet, startet: erStartet(runde), na,
+    avslort: avslorte(runde), harRatet: harRatet.size, deltakere: antallDeltakere, ol };
   if (runde.avsluttet) ut.sammendrag = sammendrag(ol, per, deltakere, runde);
   return ut;
 }
