@@ -12,10 +12,10 @@
 ## Kort fortalt
 
 Smakerunden går ett øl om gangen. Telefonene og storskjermen viser bare ølet som smakes og dem som er
-smakt, og bare ølet som smakes, kan rates. Verten åpner første øl, og «Neste øl» avslører det som smakes og
-åpner det neste. Verten kan flytte øl som ikke er åpnet, også de alkoholfrie. Storskjermen blir laget for
-16:9 uten rulling, med toppliste over avslørte øl og en QR-kode for å bli med, som lages uten bibliotek.
-Vertsstyring fra egen telefon er utenfor. Rundt 1 time.
+smakt, og bare ølet som smakes, kan rates. Før «Start runden» viser storskjermen en QR-kode for å bli med, som
+lages uten bibliotek. Etter start viser den «Øl 4 av 12», ølet som smakes, det sist avslørte med kommentarer og
+en toppliste, i 16:9 uten rulling. «Neste øl» avslører det som smakes og åpner det neste, og verten kan flytte
+øl som ikke er åpnet, også de alkoholfrie. Vertsstyring fra egen telefon er utenfor. Rundt 1 time.
 
 ```mermaid
 flowchart LR
@@ -96,10 +96,14 @@ flowchart LR
   - Til venstre: ølet som smakes, stort, med «4 av 6 har ratet» og fremdriftsstreken. Under står vertens
     knapper.
   - Til høyre: topplista.
-  - Øverst eller i et hjørne: koden, lenken og QR-koden.
+  - Øverst: «Øl 4 av 12» i stort. Koden, lenken og QR-koden vises bare før start, og etter start kan man bare
+    bli med på lenken verten deler, for eksempel i chatten. Verten har «Kopier lenken» blant knappene.
+  - Under ølet som smakes: det sist avslørte ølet med navn, snitt, Untappd, antall karakterer og høyst fire
+    kommentarer.
   - Skriften skalerer med høyden på skjermen, så den kan leses på avstand.
   - Smalere eller stående skjerm: ett felt under et annet, med ølet som smakes øverst og topplista under.
-- Før første øl: stor QR-kode og kode, hvor mange som har blitt med, og knappen «Åpne øl 1».
+- Før start: stor QR-kode, koden og lenken, hvor mange som har blitt med, og knappen «Start runden», som
+  åpner øl 1.
 - Knappen heter «Neste øl». Har ikke alle ratet ølet som smakes, sier den «2 har ikke ratet øl 3. Trykk igjen
   for å gå videre.» og venter på et trykk til. På det siste ølet heter den «Avslør øl 9», og etterpå blir
   «Avslutt runden» hovedknappen.
@@ -166,10 +170,11 @@ flowchart LR
   QR-leser til å lese en kode i hver versjon fra 1 til 6. Sjekken er sett feile på et bevisst brudd i
   feilrettingen
 - [x] Playwright lokalt, som en engangssjekk som ikke sjekkes inn: verten starter en blind runde, tre deltakere
-  blir med, ingen kan rate før «Åpne øl 1», telefonene får øl 1 uten at noe er avslørt, verten flytter øl 5
-  foran øl 3 i skjenkelista, trykker «Neste øl» to ganger, og deltakerne ser bare de smakte ølene og det som
+  blir med, ingen kan rate før «Start runden», telefonene får øl 1 uten at noe er avslørt, verten flytter øl 5
+  foran øl 3 i skjenkelista, QR-koden og koden er borte etter start og hodet viser «Øl 1 av 12», verten trykker
+  «Neste øl» to ganger, det sist avslørte ølet vises med kommentarene, og deltakerne ser bare de smakte ølene og det som
   smakes, i den nye rekkefølgen. Topplista er sortert på snitt
-- [x] Storskjermen ruller ikke under runden med 12 øl i 1920 × 1080, 1440 × 900, 1280 × 720 og 1024 × 768,
+- [x] Storskjermen ruller ikke under runden med 12 øl og fire lange kommentarer på det sist avslørte i 1920 × 1080, 1440 × 900, 1280 × 720 og 1024 × 768,
   målt med Playwright. Skjermbilder av dem, av skjenkelista og av deltakersiden i 360 px, lyst og mørkt
 - [x] `site/index.html`, `README.md`, `CLAUDE.md` og `docs/deploy.md` er oppdatert
 

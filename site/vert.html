@@ -18,7 +18,14 @@
 .lenke { color: var(--hode-ink); font-size: 1.05rem; overflow-wrap: anywhere; }
 .julehode .knapp { background: transparent; color: var(--hode-ink); border-color: rgba(255, 255, 255, .35); }
 .qr svg { display: block; width: 100%; height: auto; border-radius: 6px; }
-.qr-hode { flex: 0 0 auto; width: 7.5rem; }
+.hode-tall { font: 800 clamp(2.2rem, 7vw, 4.2rem)/1 var(--display); color: var(--gull-lys); }
+.sist { border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 8px; min-height: 0; }
+.sist-rad { display: flex; gap: 8px 18px; align-items: baseline; justify-content: space-between; }
+.sist-navn { font-size: 1.3rem; overflow-wrap: anywhere; }
+.sist-snitt { font: 800 2.2rem/1 var(--display); color: var(--rod); font-variant-numeric: tabular-nums; }
+.sist-kommentarer { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.sist-kommentarer li { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sist-kommentarer b { color: var(--muted); font-weight: 600; }
 .kort { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; align-content: start; }
 .scene { display: grid; gap: 20px; margin-top: -24px; position: relative; }
 .scene > .kort { box-shadow: 0 10px 30px -18px rgba(10, 30, 22, .45); }
@@ -76,7 +83,9 @@ a.knapp { text-decoration: none; display: inline-block; }
   .runde .julelys { height: 3vh; }
   .runde .kode { font-size: 7vh; }
   .runde .lenke { font-size: 1.1rem; }
-  .runde .qr-hode { width: 15vh; }
+  .runde .hode-tall { font-size: 7vh; }
+  .runde .sist { padding-top: 1.6vh; gap: .9vh; }
+  .runde .sist-snitt { font-size: 5vh; }
   .runde main.wrap { min-height: 0; padding-bottom: 2.4vh; grid-template-rows: minmax(0, 1fr); }
   .runde .scene { grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); min-height: 0; height: 100%; margin-top: -2.4vh; }
   .runde .scene > .kort { min-height: 0; overflow: hidden; padding: 2.4vh 1.6vw; gap: 1.8vh; }
@@ -114,13 +123,13 @@ a.knapp { text-decoration: none; display: inline-block; }
     <div class="hode-rad">
       <div>
         <p class="eyebrow" id="undertittel">Smakerunde</p>
-        <div class="kode-boks">
+        <div class="kode-boks" id="kode-boks">
           <span class="kode" id="kode" aria-label="Koden til runden"></span>
           <span class="lenke" id="lenke"></span>
           <button type="button" class="knapp ikke-utskrift" id="kopier">Kopier lenken</button>
         </div>
+        <p class="hode-tall" id="hode-tall" hidden></p>
       </div>
-      <div class="qr qr-hode" id="qr-hode" hidden></div>
     </div>
   </div>
 </header>
@@ -135,11 +144,18 @@ a.knapp { text-decoration: none; display: inline-block; }
       <div class="bane stor" id="na-bane" hidden><span class="fremdrift" id="na-fremdrift"></span><span class="tekst" id="na-ratet"></span></div>
       <p id="status" role="status"></p>
       <div class="knapper">
-        <button type="button" class="knapp primar" id="neste" hidden>Åpne øl 1</button>
+        <button type="button" class="knapp primar" id="neste" hidden>Start runden</button>
         <button type="button" class="knapp" id="avslutt" hidden>Avslutt runden</button>
         <a class="knapp" id="skjenk-lenke" href="#" target="skjenkeliste" hidden>Skjenkeliste</a>
+        <button type="button" class="knapp" id="kopier-lenke" hidden>Kopier lenken</button>
         <button type="button" class="knapp" id="skriv-ut" hidden>Skriv ut</button>
         <button type="button" class="knapp" id="bilde" hidden>Lagre som bilde</button>
+      </div>
+      <div class="sist" id="sist" hidden>
+        <span class="etikett">Sist avslørt</span>
+        <div class="sist-rad"><h3 class="sist-navn" id="sist-navn"></h3><span class="sist-snitt" id="sist-snitt"></span></div>
+        <p class="hjelp" id="sist-info"></p>
+        <ul class="sist-kommentarer" id="sist-kommentarer"></ul>
       </div>
     </section>
     <section class="kort" id="topp-del" aria-labelledby="topp-h">
@@ -204,7 +220,7 @@ async function start() {
   $("undertittel").textContent = `Smakerunde · ${runde.ol.length} øl${runde.blind ? " · blind" : ""}`;
   try {
     const svg = qrSvg(deltakerLenke, { tittel: `QR-kode til ${deltakerLenke}` });
-    $("qr-hode").innerHTML = $("qr-stor").innerHTML = svg;
+    $("qr-stor").innerHTML = svg;
   } catch {
     // For lang lenke: lenken og koden står der uansett.
   }
@@ -228,8 +244,13 @@ function tegn() {
   const na = res.ol.find((o) => o.plass === res.na);
   const fase = res.avsluttet ? "avsluttet" : !res.startet ? "for" : na ? "under" : "ferdig";
   document.documentElement.classList.toggle("runde", fase !== "avsluttet");
-  $("qr-hode").hidden = fase !== "under" && fase !== "ferdig";
+  // Før start: koden, lenken og QR-koden. Etter start bare hvor langt dere har kommet, og verten deler lenken selv.
+  $("kode-boks").hidden = fase !== "for";
   $("qr-stor").hidden = fase !== "for";
+  $("hode-tall").hidden = fase === "for";
+  $("hode-tall").textContent = fase === "under" ? `Øl ${na.plass} av ${res.ol.length}`
+    : fase === "ferdig" ? `Alle ${res.ol.length} øl er smakt` : "Resultatet";
+  $("kopier-lenke").hidden = !vertNokkel || fase === "for" || fase === "avsluttet";
   $("na-bane").hidden = fase !== "under";
   $("na-stil").hidden = !(fase === "under" && na?.stil);
   const deltakere = `${res.deltakere} ${res.deltakere === 1 ? "deltaker" : "deltakere"}`;
@@ -246,7 +267,7 @@ function tegn() {
     const andel = res.deltakere ? Math.min(100, (na.antall / res.deltakere) * 100) : 0;
     $("na-fremdrift").style.width = `${andel}%`;
     $("na-ratet").textContent = `${na.antall} av ${res.deltakere} har ratet`;
-    $("status").textContent = `${deltakere}. Flere kan bli med på lenken eller med koden ${kode}.`;
+    $("status").textContent = `${deltakere}.`;
   } else if (fase === "ferdig") {
     $("na-etikett").textContent = "Alle ølene er smakt";
     $("na-navn").textContent = "Klart for resultatet";
@@ -259,10 +280,23 @@ function tegn() {
 
   const neste = $("neste");
   neste.hidden = !vertNokkel || fase === "avsluttet" || fase === "ferdig";
-  if (bekreftNeste === null) neste.textContent = fase === "for" ? "Åpne øl 1" : igjen ? "Neste øl" : `Avslør øl ${na?.plass}`;
+  if (bekreftNeste === null) neste.textContent = fase === "for" ? "Start runden" : igjen ? "Neste øl" : `Avslør øl ${na?.plass}`;
   $("avslutt").hidden = !vertNokkel || fase === "avsluttet";
   $("avslutt").classList.toggle("primar", fase === "ferdig");
   $("skriv-ut").hidden = $("bilde").hidden = fase !== "avsluttet";
+
+  // Det sist avslørte ølet med snitt og kommentarer, så avsløringen får et øyeblikk på skjermen.
+  const sistPlass = Math.max(0, ...res.avslort);
+  const sist = fase === "under" || fase === "ferdig" ? res.ol.find((o) => o.plass === sistPlass) : null;
+  $("sist").hidden = !sist;
+  if (sist) {
+    $("sist-navn").textContent = sist.navn ?? `Øl ${sist.plass}`;
+    $("sist-snitt").textContent = sist.snitt != null ? nf2.format(sist.snitt) : "–";
+    $("sist-info").textContent = [`Øl ${sist.plass}`, `${sist.antall} ${sist.antall === 1 ? "karakter" : "karakterer"}`,
+      sist.score != null ? `Untappd ${nf2.format(sist.score)}` : ""].filter(Boolean).join(" · ");
+    $("sist-kommentarer").innerHTML = (sist.karakterer ?? []).filter((k) => k.kommentar).slice(0, 4)
+      .map((k) => `<li>«${esc(k.kommentar)}» <b>${esc(k.kallenavn)}, ${nf1.format(k.stjerner)}</b></li>`).join("");
+  }
 
   const liste = topplista();
   $("untappd-forkl").hidden = liste.length === 0;
@@ -297,14 +331,16 @@ function tegn() {
   }
 }
 
-$("kopier").addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(deltakerLenke);
-    $("kopier").textContent = "Kopiert";
-  } catch {
-    $("kopier").textContent = "Kopier selv";
-  }
-});
+for (const id of ["kopier", "kopier-lenke"]) {
+  $(id).addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(deltakerLenke);
+      $(id).textContent = "Kopiert";
+    } catch {
+      $(id).textContent = `Kopier selv: ${deltakerLenke}`;
+    }
+  });
+}
 
 $("skjenk-lenke").addEventListener("click", (e) => {
   e.preventDefault();
