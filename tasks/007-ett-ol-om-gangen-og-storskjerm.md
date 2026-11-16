@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | pending |
+| Status | in-progress |
 | Created | 2026-11-16 |
 | Completed | - |
 | Henger sammen med | [005](005-smakerunde.md) (smakerunden, ikke prøvd på Vercel ennå), [006](completed/006-lagre-rekka-og-avslor-ol-for-ol.md) (avsløring øl for øl) |
@@ -187,12 +187,3 @@ Risiko: flyttingen gir ølene nye plasser, og karakterene er lagret per plass. D
 karakterer flyttes, og en test sjekker at karakterene står på samme øl etterpå. En QR-koder med én feil bit
 gir en kode som ikke kan leses, og det er sjekken med macOS' QR-leser som fanger det. Kvoten har lite luft
 (7 431 av 8 000 i dag), men `neste` og flyttingen er få kall per runde.
-
-### Åpent
-
-- Hvor endres rekkefølgen? Anbefalt: i skjenkelista i et eget vindu, for øl som ikke er åpnet, også midt i
-  kvelden. Det andre er på hovedsiden før runden startes, som er enklere i API-et, men da er rekkefølgen låst
-  når runden er i gang. Det tredje er bare i åpen runde.
-- Skal runden starte med «Åpne øl 1»? Anbefalt: ja, så verten kan flytte alle øl før noen har ratet, og
-  folk kan skanne QR-koden mens det skjenkes. Det andre er at øl 1 er åpent med en gang, og da kan det ikke
-  flyttes.
