@@ -4,10 +4,10 @@
 
 | Field | Value |
 |-------|-------|
-| Status | in-progress |
+| Status | completed |
 | Created | 2026-11-13 |
-| Completed | - |
-| Henger sammen med | [005](005-smakerunde.md) (smakerunden, ikke prøvd på Vercel ennå), [001](001-olsmaking-planlegger.md) |
+| Completed | 2026-11-16 |
+| Henger sammen med | [005](../005-smakerunde.md) (smakerunden, ikke prøvd på Vercel ennå), [001](../001-olsmaking-planlegger.md) |
 
 ## Kort fortalt
 
