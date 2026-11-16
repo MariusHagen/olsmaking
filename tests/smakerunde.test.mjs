@@ -230,6 +230,10 @@ test("CORS bare for siden, og localhost ikke i produksjon", async () => {
   assert.equal(await fra("http://localhost:8000", { VERCEL_ENV: "production" }), null);
   assert.equal(await fra("http://localhost:8000", {}), "http://localhost:8000");
   assert.equal(await fra("https://ond.example", {}), null);
+  const lan = { LAN_OPPRINNELSER: "http://10.0.0.5:8000" };
+  assert.equal(await fra("http://10.0.0.5:8000", lan), "http://10.0.0.5:8000", "nettverksadressen fra lokal-api.mjs --lan");
+  assert.equal(await fra("http://10.0.0.5:8000", {}), null);
+  assert.equal(await fra("http://10.0.0.5:8000", { ...lan, VERCEL_ENV: "production" }), null);
   const pre = await o.kall("OPTIONS", "/ABCDEF/karakter");
   assert.equal(pre.status, 204);
   assert.match(pre.hoder.get("access-control-allow-methods"), /PUT/);

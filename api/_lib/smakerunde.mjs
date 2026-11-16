@@ -50,7 +50,9 @@ const lenke = (v) => (typeof v === "string" && v.startsWith("https://www.vinmono
 
 function cors(request, env) {
   const fra = request.headers.get("origin");
-  const tillatt = env.VERCEL_ENV === "production" ? PROD : [...PROD, ...LOKALT];
+  // Settes av tools/lokal-api.mjs --lan, så sidene kan prøves fra en telefon på samme nett.
+  const lan = env.LAN_OPPRINNELSER ? env.LAN_OPPRINNELSER.split(",") : [];
+  const tillatt = env.VERCEL_ENV === "production" ? PROD : [...PROD, ...LOKALT, ...lan];
   return fra && tillatt.includes(fra) ? { "Access-Control-Allow-Origin": fra, Vary: "Origin" } : { Vary: "Origin" };
 }
 

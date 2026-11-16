@@ -28,6 +28,7 @@ tools/verifiser.sh                      # alle testene
 python3 juleol.py                       # hent data til site/data/juleol.json (ett kall)
 python3 -m http.server -d site 8000     # siden lokalt på http://localhost:8000
 node tools/lokal-api.mjs                # API-et for smakerunden lokalt på port 8787, med minnelager
+node tools/lokal-api.mjs --lan          # det samme, og fra en telefon på samme Wi-Fi
 ```
 
 ## Regler som ikke synes i koden

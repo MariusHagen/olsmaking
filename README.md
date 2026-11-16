@@ -59,6 +59,7 @@ Krever `python3` og `node`, ingen andre avhengigheter.
 python3 juleol.py                       # henter data til site/data/juleol.json (ett kall)
 python3 -m http.server -d site 8000     # siden på http://localhost:8000
 node tools/lokal-api.mjs                # smakerunden lokalt på port 8787, med minnelager
+node tools/lokal-api.mjs --lan          # det samme, og fra en telefon på samme Wi-Fi
 tools/verifiser.sh                      # alle testene
 ```
 

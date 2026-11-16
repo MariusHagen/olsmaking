@@ -1,6 +1,8 @@
-// Adressen til API-et for smakerunden. Lokalt kjører tools/lokal-api.mjs på port 8787.
-const lokalt = ["localhost", "127.0.0.1"].includes(location.hostname);
-export const API = lokalt ? "http://localhost:8787/api/runde" : "https://olsmaking-api.vercel.app/api/runde";
+// Adressen til API-et for smakerunden. Lokalt kjører tools/lokal-api.mjs på port 8787 på samme maskin som siden,
+// også når siden åpnes fra en telefon på samme nett med en privat adresse (node tools/lokal-api.mjs --lan).
+const lokalt = ["localhost", "127.0.0.1"].includes(location.hostname)
+  || /^(10|192\.168|172\.(1[6-9]|2\d|3[01]))\.\d+\.\d+(\.\d+)?$/.test(location.hostname);
+export const API = lokalt ? `http://${location.hostname}:8787/api/runde` : "https://olsmaking-api.vercel.app/api/runde";
 
 // Smakerunden vises på nett først når Vercel-prosjektet er satt opp (se docs/deploy.md).
 export const SMAKERUNDE = lokalt || false;
