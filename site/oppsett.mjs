@@ -4,8 +4,8 @@ const lokalt = ["localhost", "127.0.0.1"].includes(location.hostname)
   || /^(10|192\.168|172\.(1[6-9]|2\d|3[01]))\.\d+\.\d+(\.\d+)?$/.test(location.hostname);
 export const API = lokalt ? `http://${location.hostname}:8787/api/runde` : "https://olsmaking-api.vercel.app/api/runde";
 
-// Smakerunden vises på nett først når Vercel-prosjektet er satt opp (se docs/deploy.md).
-export const SMAKERUNDE = lokalt || false;
+// Av-bryteren for smakerunden på siden. Nødbryteren for API-et er SMAKERUNDE_AV på Vercel (se docs/deploy.md).
+export const SMAKERUNDE = lokalt || true;
 
 export async function api(sti, { metode = "GET", body, hoder = {} } = {}) {
   let svar;
