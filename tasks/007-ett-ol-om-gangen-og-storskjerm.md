@@ -13,13 +13,14 @@
 
 Smakerunden går ett øl om gangen. Telefonene og storskjermen viser bare ølet som smakes og dem som er
 smakt, og bare ølet som smakes, kan rates. Verten åpner første øl, og «Neste øl» avslører det som smakes og
-åpner det neste. Verten kan flytte øl som ikke er åpnet, også de alkoholfrie. Storskjermen blir laget for en
-skjerm i 16:9 uten rulling, med toppliste over avslørte øl og QR-kode for å bli med, skrevet uten bibliotek.
+åpner det neste. Verten kan flytte øl som ikke er åpnet, også de alkoholfrie. Storskjermen blir laget for
+16:9 uten rulling, med toppliste over avslørte øl og en QR-kode for å bli med, som lages uten bibliotek.
 Vertsstyring fra egen telefon er utenfor. Rundt 1 time.
 
 ```mermaid
 flowchart LR
-  skjerm["Storskjermen i 16:9<br/>QR, toppliste, «Neste øl», flytt øl"]:::endret --> api["API-et<br/>ett øl om gangen, ny rekkefølge"]:::endret
+  skjerm["Storskjermen i 16:9<br/>QR, toppliste, «Neste øl»"]:::endret --> api["API-et<br/>ett øl om gangen, ny rekkefølge"]:::endret
+  skjenk["Skjenkelista i eget vindu<br/>flytt øl"]:::ny --> api
   mobil["Deltakersiden<br/>ølet som smakes og de smakte"]:::endret --> api
   skjerm --> qr["qr.mjs<br/>QR-kode uten bibliotek"]:::ny
   classDef ny fill:#E1F5EE,stroke:#0F6E56,color:#085041
@@ -33,9 +34,10 @@ flowchart LR
 - Deltakerne kan rate alle øl som ikke er avslørt, i hvilken rekkefølge de vil. I en åpen runde ser de
   navnene på alle ølene fra start, og det gjør storskjermen også.
 - Verten avslører øl for øl med `POST /api/runde/{kode}/avslor`, og storskjermen viser alle ølene i
-  rekkefølgen med «4 av 6 har ratet» til de er avslørt.
+  rekkefølgen med «4 av 6 har ratet» til de er avslørt. Runden har lista `avslort` med avslørte plasser.
 - Storskjermen (`site/vert.html`) er en side som ruller, høyst 72rem bred. Lenken og koden står øverst, men
-  det finnes ingen QR-kode.
+  det finnes ingen QR-kode. Skjenkelista for verten er en sammenlagt liste på samme side, og vertnøkkelen
+  ligger i nettleseren som startet runden.
 
 ## Description
 
@@ -43,23 +45,30 @@ flowchart LR
 
 `api/_lib/smakerunde.mjs`:
 
-- En ny runde er ikke startet: deltakerne kan bli med, men ingen øl er åpnet, og ingen kan rate.
+- Runden får feltet `startet`. En ny runde er ikke startet: deltakerne kan bli med, men ingen øl er åpnet, og
+  ingen kan rate. Når runden er startet, er ølet som smakes det første som ikke er avslørt. Runder uten
+  feltet, fra før denne endringen, regnes som startet. De finnes bare lokalt.
 - Ruten `avslor` erstattes av `POST /api/runde/{kode}/neste` med vertnøkkelen og plassen til ølet som smakes,
-  eller 0 før første øl. Den avslører det ølet og åpner det neste. Etter det siste ølet er ingenting åpent, og
-  runden venter på at verten avslutter. Samme plass to ganger gir 200 uten endring, så et dobbelttrykk eller to
-  skjermer ikke hopper over et øl. En annen plass enn den som smakes, gir 409. Uten riktig vertnøkkel 403, og
-  i en avsluttet runde 409.
-- Karakter kan bare gis på ølet som smakes. Et øl som er avslørt eller ikke åpnet, gir 409 med en melding som
-  sier hvilket.
+  eller 0 for å starte. Den avslører ølet og åpner det neste. Etter det siste ølet er ingenting åpent, og
+  runden venter på at verten avslutter. Regelen for plassen:
+  - Ølet som smakes, eller 0 i en runde som ikke er startet: avslør og åpne neste, eller start.
+  - Et øl som allerede er avslørt, eller 0 i en startet runde: 200 uten endring, så et dobbelttrykk eller to
+    skjermer ikke hopper over et øl.
+  - Et øl som ikke er åpnet: 409. Uten riktig vertnøkkel 403, i en avsluttet runde 409.
+- Karakter kan bare gis på ølet som smakes. Før start, på et avslørt øl eller på et øl som ikke er åpnet, gir
+  det 409 med en melding som sier hvilket.
 - Hva som vises, avgjøres per øl ut fra plassen i rekkefølgen, i alle rutene uten vertnøkkel (`GET`,
   `deltaker` og `resultater`):
   - Et øl som ikke er åpnet: bare plassen, i både blind og åpen runde.
   - Ølet som smakes: i en blind runde plassen og antall karakterer, i en åpen også opplysningene om ølet.
   - Et avslørt øl: alt, som i dag.
+  - Toppnivået får `startet` i tillegg til feltene i dag.
 - Ny rute `POST /api/runde/{kode}/rekkefolge` med vertnøkkelen og den nye rekkefølgen for ølene som ikke er
   åpnet, som en liste over plassene deres. Ølene får nye plasser etter den nye rekkefølgen. Lista må ha nøyaktig
   de ølene som ikke er åpnet, ellers 400. Ølet som smakes og de avslørte kan ikke flyttes, og de er de eneste
   som kan ha karakterer, så ingen karakter kan havne på feil øl. Uten riktig vertnøkkel 403, avsluttet 409.
+  Flytter og avslører verten fra to vinduer i samme øyeblikk, kan den ene endringen gå tapt, som for avsløringen
+  i dag. En flytting fra en gammel liste gir 400.
 - Avslutningen avslører alle ølene som før, også dem som ikke ble åpnet.
 
 ### 2. Deltakersiden
@@ -71,8 +80,9 @@ flowchart LR
 - Under står de smakte ølene med navn, «Du / Kontoret / Untappd» og låste stjerner. Rakk man ikke å rate et
   øl før det ble avslørt, står det «Du rakk ikke å rate dette».
 - Øl som ikke er åpnet, vises ikke, bare «3 øl igjen».
-- Pollingen er som i dag: runden hvert 30. sekund og med en gang fanen blir synlig, så telefonen henter
-  neste øl når skjermen låses opp. Resultatene hentes bare når et nytt øl er avslørt.
+- Runden hentes hvert 30. sekund og med en gang fanen blir synlig, så telefonen henter neste øl når skjermen
+  låses opp. Siden tegnes på nytt når runden er startet eller et nytt øl er åpnet, ikke bare når et øl er
+  avslørt. Resultatene hentes bare når et nytt øl er avslørt.
 
 ### 3. Storskjermen i 16:9
 
@@ -84,35 +94,48 @@ flowchart LR
   - Til høyre: topplista.
   - Øverst eller i et hjørne: koden, lenken og QR-koden.
   - Skriften skalerer med høyden på skjermen, så den kan leses på avstand.
-  - Smalere eller stående skjerm: oppsettet fra i dag, med ølet som smakes øverst og topplista under.
+  - Smalere eller stående skjerm: ett felt under et annet, med ølet som smakes øverst og topplista under.
 - Før første øl: stor QR-kode og kode, hvor mange som har blitt med, og knappen «Åpne øl 1».
-- Knappen heter «Neste øl» og har samme bekreftelse som i dag når noen ikke har ratet («2 har ikke ratet øl
-  3. Trykk igjen.»). På det siste ølet heter den «Avslør øl 9», og etterpå blir «Avslutt runden» hovedknappen.
+- Knappen heter «Neste øl». Har ikke alle ratet ølet som smakes, sier den «2 har ikke ratet øl 3. Trykk igjen
+  for å gå videre.» og venter på et trykk til. På det siste ølet heter den «Avslør øl 9», og etterpå blir
+  «Avslutt runden» hovedknappen.
 - Topplista har de avslørte ølene sortert på snitt, høyest først. Ved likt snitt kommer ølet med flest
-  karakterer først, deretter rekkefølgen i runden. Hver rad har plass i lista, navn, søyle med snitt og
-  Untappd-streken. Lista endres bare når et øl avsløres, siden snittet ikke finnes før det.
+  karakterer først, deretter rekkefølgen i runden. Et avslørt øl uten karakterer står sist med «–». Hver rad
+  har plass i lista, navn, søyle med snitt og Untappd-streken. Lista endres bare når et øl avsløres, siden
+  snittet ikke finnes før det.
 - Øl som ikke er åpnet, vises ikke på storskjermen, bare «3 øl igjen». Storskjermen står synlig for alle.
-- Skjenkelista for verten får knapper for å flytte øl opp og ned, for øl som ikke er åpnet. Før første øl kan
-  alle flyttes. I en blind runde viser skjenkelista navnene, så den åpnes på vertens egen skjerm.
+- Skjenkelista flyttes ut av storskjermen. Storskjermen får lenken «Skjenkeliste» (bare med vertnøkkelen), som
+  åpner `vert.html#KODE/skjenk` i et eget vindu. Det vinduet har vertnøkkelen, siden det er samme nettleser,
+  og viser bare ølene i rekkefølgen med navn og knapper for å flytte øl som ikke er åpnet opp og ned. Før
+  første øl kan alle flyttes. Er TV-en en ekstra skjerm, står vinduet på vertens egen skjerm, så navnene ikke
+  vises på TV-en i en blind runde.
 - Etter avslutningen kan siden rulle: topplista er resultatet, og sammendraget og kommentarene kommer under.
   Utskrift og «Lagre som bilde» er som før.
 
 ### 4. QR-kode uten bibliotek
 
-- `site/qr.mjs` lager en QR-kode for en tekst, i byte-modus med feilretting M, i den minste versjonen som
-  har plass, opp til versjon 10. Den gir en SVG, så den er skarp på en stor skjerm. Ingen tilgang til siden,
-  så den testes med `node --test`.
+- `site/qr.mjs` lager en QR-kode for en tekst, i byte-modus med feilretting M (det nest laveste av fire
+  nivåer), i den minste versjonen som har plass, opp til versjon 6 (106 tegn). Lenken til deltakerne er rundt
+  56 tegn på GitHub Pages. En lengre tekst gir en feil, og da vises lenken og koden uten QR-kode.
+- Den gir både modulene som rader med 0 og 1 og en SVG, så koden er skarp på en stor skjerm. Ingen tilgang til
+  siden, så den testes i `tests/qr.test.mjs`, som `tools/verifiser.sh` plukker opp av seg selv.
 - QR-koden peker til samme lenke som «Kopier lenken».
-- `tools/sjekk-qr.mjs` lager QR-koder for lenker av ulik lengde og lar macOS' egen QR-leser (Vision, via
-  `swift`) lese dem. Den kjøres for hånd på en Mac, ikke i `verifiser.sh`.
+- `tools/sjekk-qr.mjs` lager QR-koder for tekster som gir hver versjon fra 1 til 6, tegner modulene som et
+  bilde med hvit kant rundt, og lar macOS' egen QR-leser (Vision, via `swift`) lese dem. Den kjøres for hånd
+  på en Mac, ikke i `verifiser.sh`, og gjør ingen kall ut.
 
-### 5. Docs
+### 5. Docs og tekster
 
-- `README.md`: smakerunden går ett øl om gangen, verten kan flytte øl, og storskjermen har toppliste og
-  QR-kode.
-- `CLAUDE.md`: regelen om testen av tillatte felter gjelder også øl som ikke er åpnet, i både blind og åpen
-  runde. `qr.mjs` nevnes under «Hvordan det henger sammen».
-- `docs/deploy.md`: røyktesten bruker `/neste` i stedet for `/avslor`, og tallene for kvoten oppdateres.
+- `site/index.html`: teksten ved «Start smakerunde» sier at dere smaker ett øl om gangen og at resultatene
+  kommer på storskjermen etter hvert øl.
+- `README.md`: avsnittet om smakerunden skrives om til den nye flyten: åpne første øl, «Neste øl», flytte øl
+  i skjenkelista, toppliste og QR-kode. Avsnittet om blindsmaking følger med.
+- `CLAUDE.md`: regelen om testen av tillatte felter skrives om: et øl som ikke er åpnet, viser bare plassen i
+  både blind og åpen runde, ølet som smakes viser i en blind runde bare plassen og antall, og ingen ser snitt
+  eller karakterer før ølet er avslørt. `qr.mjs` nevnes under «Hvordan det henger sammen», og
+  `node tools/sjekk-qr.mjs` under «Kommandoer».
+- `docs/deploy.md`: røyktesten starter runden med `neste` og plass 0, rater øl 1 og kaller `neste` med
+  plass 1, og teksten om den følger med. Tallet under «Bruken av kvoten» settes til det testen gir.
 
 ### Utenfor
 
@@ -124,23 +147,26 @@ flowchart LR
 
 ## Acceptance Criteria
 
-- [ ] API-testene dekker: ingen kan rate før første øl, bare ølet som smakes kan rates, `neste` bare med
-  vertnøkkelen, samme plass to ganger åpner bare ett nytt øl, feil plass gir 409, og avslutningen avslører alt
+- [ ] API-testene dekker `neste`: ingen kan rate før start, bare ølet som smakes kan rates, bare vertnøkkelen
+  kan gå videre, ølet som smakes går videre, et avslørt øl og 0 i en startet runde gir 200 uten endring (også
+  etter det siste ølet), et øl som ikke er åpnet gir 409, og avslutningen avslører alt
 - [ ] API-testene dekker flyttingen: bare vertnøkkelen, bare øl som ikke er åpnet, lista må ha nøyaktig de
   ølene, og karakterene for de smakte ølene står på samme øl etter en flytting
 - [ ] Testen av tillatte felter kjøres for både blind og åpen runde, før start, midt i og etter siste øl, og
   sjekker hvert øl i alle ruter uten vertnøkkel. Den er sett feile på et bevisst brudd der et øl som ikke er
   åpnet, får navnet sitt
-- [ ] Testen som teller kommandoene i en simulert runde, har start, `neste` og én flytting, og er under 8 000
-- [ ] `node --test` for `qr.mjs` dekker størrelse, versjon og formatinformasjon, og `tools/sjekk-qr.mjs` leser
-  QR-koder for fem lenker fra 20 tegn til den lengste lenken siden kan lage. Sjekken er sett feile på et
-  bevisst brudd i feilrettingen
-- [ ] Playwright lokalt: verten starter en blind runde, tre deltakere blir med, ingen kan rate før «Åpne øl 1»,
-  verten flytter øl 5 foran øl 3, trykker «Neste øl» to ganger, og deltakerne ser bare de smakte ølene og det
-  som smakes, i den nye rekkefølgen. Topplista er sortert på snitt
-- [ ] Storskjermen ruller ikke under runden med 12 øl i 1920 × 1080, 1280 × 720 og 1440 × 900, målt med
-  Playwright. Skjermbilder av dem og av deltakersiden i 360 px, lyst og mørkt
-- [ ] `README.md`, `CLAUDE.md` og `docs/deploy.md` er oppdatert
+- [ ] Testen som teller kommandoene i en simulert runde med 15 personer, 10 øl og 90 minutter har start,
+  `neste` og én flytting, og er under 8 000
+- [ ] `tests/qr.test.mjs` dekker størrelse, versjon og formatinformasjon, og `tools/sjekk-qr.mjs` får macOS'
+  QR-leser til å lese en kode i hver versjon fra 1 til 6. Sjekken er sett feile på et bevisst brudd i
+  feilrettingen
+- [ ] Playwright lokalt, som en engangssjekk som ikke sjekkes inn: verten starter en blind runde, tre deltakere
+  blir med, ingen kan rate før «Åpne øl 1», telefonene får øl 1 uten at noe er avslørt, verten flytter øl 5
+  foran øl 3 i skjenkelista, trykker «Neste øl» to ganger, og deltakerne ser bare de smakte ølene og det som
+  smakes, i den nye rekkefølgen. Topplista er sortert på snitt
+- [ ] Storskjermen ruller ikke under runden med 12 øl i 1920 × 1080, 1440 × 900, 1280 × 720 og 1024 × 768,
+  målt med Playwright. Skjermbilder av dem, av skjenkelista og av deltakersiden i 360 px, lyst og mørkt
+- [ ] `site/index.html`, `README.md`, `CLAUDE.md` og `docs/deploy.md` er oppdatert
 
 ## Notes
 
@@ -154,18 +180,19 @@ at karakterene blir stående på riktig øl. QR-koden: sjekken med macOS' QR-les
 |---|---|---|
 | 1 Ett øl om gangen og flytting i API-et | 0,25 t | |
 | 2 Deltakersiden | 0,25 t | Test med telefoner på Wi-Fi |
-| 3 Storskjermen i 16:9 med toppliste, Playwright og docs | 0,25 t | Test på en ekte TV, din gjennomgang av skjermbildene |
-| 4 QR-kode med sjekk | 0,25 t | Skanning med en ekte telefon |
+| 3 Storskjermen i 16:9, skjenkelista, Playwright og docs | 0,25 t | Test på en ekte TV, din gjennomgang av skjermbildene |
+| 4 QR-kode til versjon 6, med sjekk | 0,25 t | Skanning med en ekte telefon |
 
 Risiko: flyttingen gir ølene nye plasser, og karakterene er lagret per plass. Derfor kan bare øl uten
 karakterer flyttes, og en test sjekker at karakterene står på samme øl etterpå. En QR-koder med én feil bit
-gir en kode som ikke kan leses, og det er sjekken med macOS' QR-leser som fanger det.
+gir en kode som ikke kan leses, og det er sjekken med macOS' QR-leser som fanger det. Kvoten har lite luft
+(7 431 av 8 000 i dag), men `neste` og flyttingen er få kall per runde.
 
 ### Åpent
 
-- Hvor endres rekkefølgen? Anbefalt: på storskjermen, for øl som ikke er åpnet, også midt i kvelden. Det
-  andre er på hovedsiden før runden startes. Det er enklere i API-et, men rekkefølgen er da låst når runden
-  er i gang.
+- Hvor endres rekkefølgen? Anbefalt: i skjenkelista i et eget vindu, for øl som ikke er åpnet, også midt i
+  kvelden. Det andre er på hovedsiden før runden startes, som er enklere i API-et, men da er rekkefølgen låst
+  når runden er i gang. Det tredje er bare i åpen runde.
 - Skal runden starte med «Åpne øl 1»? Anbefalt: ja, så verten kan flytte alle øl før noen har ratet, og
   folk kan skanne QR-koden mens det skjenkes. Det andre er at øl 1 er åpent med en gang, og da kan det ikke
   flyttes.
