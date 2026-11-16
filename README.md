@@ -61,7 +61,7 @@ Krever `python3` og `node`, ingen andre avhengigheter.
 
 ```bash
 python3 juleol.py                       # henter data til site/data/juleol.json (ett kall)
-python3 -m http.server -d site 8000     # siden på http://localhost:8000
+python3 tools/lokal-side.py             # siden på http://localhost:8000, alltid den nyeste
 node tools/lokal-api.mjs                # smakerunden lokalt på port 8787, med minnelager
 node tools/lokal-api.mjs --lan          # det samme, og fra en telefon på samme Wi-Fi
 node tools/sjekk-qr.mjs                 # macOS' QR-leser leser QR-kodene (bare på Mac)

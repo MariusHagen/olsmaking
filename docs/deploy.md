@@ -16,7 +16,9 @@ databasen som lunsjprosjektet, med prefikset `olsmaking:`.
 5. Slå på smakerunden på siden: sett `SMAKERUNDE = lokalt || true` i `site/oppsett.mjs`, commit, og start
    publiseringen under «Actions», eller vent til natta.
 
-Etter dette deployer Vercel API-et ved hver push til `main`.
+Etter dette deployer Vercel API-et ved hver push til `main`, mens sidene publiseres om natta. Endrer en push både
+API-et og sidene, start publiseringen for hånd under «Actions» rett etter, ellers snakker gamle sider med det
+nye API-et til neste morgen.
 
 ## Røyktest
 
