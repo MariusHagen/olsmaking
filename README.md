@@ -34,7 +34,8 @@ kommer, vises verken på telefonene eller på storskjermen. Når du avslutter, k
 omstridte ølet, den største overraskelsen og hvem som var mest enig med Untappd. Resultatet kan skrives ut
 eller lagres som bilde.
 
-Storskjermen er laget for en TV eller projektor i 16:9 og fyller skjermen uten rulling. I skjenkelista, som
+Storskjermen er laget for en TV eller projektor i 16:9 og fyller skjermen uten rulling, også resultatet etter
+avslutningen. Kommentarene står under resultatet, så dem ruller du ned til. I skjenkelista, som
 åpnes i et eget vindu, ser du rekkefølgen og kan flytte øl som ikke er åpnet ennå, også de alkoholfrie.
 
 Velger du blindsmaking, ser deltakerne bare «Øl 1», «Øl 2» til du går videre fra ølet. Hold da skjenkelista

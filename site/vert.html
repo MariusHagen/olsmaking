@@ -7,9 +7,10 @@
 <meta name="theme-color" content="#133328">
 <link rel="stylesheet" href="felles.css">
 <style>
-/* Storskjermen. På en liggende skjerm fra 1024 px fyller den skjermen uten rulling mens runden pågår: ølet som
-   smakes til venstre, topplista til høyre og QR-koden i hodet. Skriften skalerer med høyden, så den kan leses på
-   avstand. Smalere eller stående skjerm: ett felt under et annet. */
+/* Storskjermen. På en liggende skjerm fra 1024 px fyller den skjermen uten rulling: under runden ølet som smakes
+   til venstre og topplista til høyre, etter avslutningen sammendraget til venstre og resultatet til høyre, med
+   kommentarene under, så man ruller ned til dem. Skriften skalerer med høyden, så den kan leses på avstand.
+   Smalere eller stående skjerm, og utskrift: ett felt under et annet. */
 .wrap { max-width: 72rem; gap: 28px; }
 .hode-innhold { max-width: 72rem; padding-block: 14px 34px; }
 .hode-rad { display: flex; gap: 16px 32px; align-items: center; justify-content: space-between; }
@@ -75,34 +76,51 @@ a.knapp { text-decoration: none; display: inline-block; }
   .soyle { grid-template-columns: 1.6rem minmax(0, 1fr) 4.5rem; }
   .soyle .bane { grid-column: 2 / -1; grid-row: 2; }
 }
-@media (min-width: 1024px) and (orientation: landscape) {
-  html.storskjerm.runde { font-size: clamp(15px, 1.75vh, 30px); }
-  html.storskjerm.runde body { height: 100vh; height: 100dvh; overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); }
-  .runde .hode-innhold, .runde .wrap { max-width: none; margin: 0; padding-inline: 3vw; }
-  .runde .hode-innhold { padding-block: 1.6vh 3.4vh; }
-  .runde .julelys { height: 3vh; }
-  .runde .kode { font-size: 7vh; }
-  .runde .lenke { font-size: 1.1rem; }
-  .runde .hode-tall { font-size: 7vh; }
-  .runde .sist { padding-top: 1.6vh; gap: .9vh; }
-  .runde .sist-snitt { font-size: 5vh; }
-  .runde main.wrap { min-height: 0; padding-bottom: 2.4vh; grid-template-rows: minmax(0, 1fr); }
-  .runde .scene { grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); min-height: 0; height: 100%; margin-top: -2.4vh; }
-  .runde .scene > .kort { min-height: 0; overflow: hidden; padding: 2.4vh 1.6vw; gap: 1.8vh; }
-  .runde .na-navn { font-size: 6vh; }
-  .runde .qr-stor { width: 34vh; }
+@media screen and (min-width: 1024px) and (orientation: landscape) {
+  html.storskjerm.fylt { font-size: clamp(15px, 1.75vh, 30px); }
+  html.storskjerm.fylt body { height: 100vh; height: 100dvh; overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+  .fylt .hode-innhold, .fylt .wrap { max-width: none; margin: 0; padding-inline: 3vw; }
+  .fylt .hode-innhold { padding-block: 1.6vh 3.4vh; }
+  .fylt .julelys { height: 3vh; }
+  .fylt .kode { font-size: 7vh; }
+  .fylt .lenke { font-size: 1.1rem; }
+  .fylt .hode-tall { font-size: 7vh; }
+  .fylt .sist { padding-top: 1.6vh; gap: .9vh; }
+  .fylt .sist-snitt { font-size: 5vh; }
+  .fylt main.wrap { min-height: 0; padding-bottom: 2.4vh; grid-template-rows: minmax(0, 1fr); }
+  .fylt .scene { grid-template-columns: minmax(0, 4fr) minmax(0, 6fr); min-height: 0; height: 100%; margin-top: -2.4vh; }
+  .fylt .scene > .kort { min-height: 0; overflow: hidden; padding: 2.4vh 1.6vw; gap: 1.8vh; }
+  .fylt .na-navn { font-size: 6vh; }
+  .fylt .qr-stor { width: 34vh; }
   /* Én linje per øl, så 12 øl får plass: lange navn kortes av med «…», og typen vises ikke. */
-  .runde .soyler { gap: .7vh; }
-  .runde .soyle { grid-template-columns: 1.8rem minmax(0, 1.25fr) minmax(0, 1fr) 4rem; gap: .9vw; }
-  .runde .soyle .navn { display: flex; align-items: baseline; gap: .5em; white-space: nowrap; }
-  .runde .soyle .navn .tittel { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .runde .soyle .navn small { display: inline; flex: none; }
-  .runde .soyle .gruppe { display: none; }
-  .runde .bane { height: 1.25rem; }
-  .runde .bane.stor { height: 2.6rem; }
-  .runde .snitt { font-size: 1.15rem; }
-  .runde .snitt small { display: none; }
-  .runde footer, .runde #sammendrag, .runde #kommentar-del { display: none; }
+  .fylt .soyler { gap: .7vh; }
+  .fylt .soyle { grid-template-columns: 1.8rem minmax(0, 1.25fr) minmax(0, 1fr) 4rem; gap: .9vw; }
+  .fylt .soyle .navn { display: flex; align-items: baseline; gap: .5em; white-space: nowrap; }
+  .fylt .soyle .navn .tittel { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .fylt .soyle .navn small { display: inline; flex: none; }
+  .fylt .soyle .gruppe { display: none; }
+  .fylt .bane { height: 1.25rem; }
+  .fylt .bane.stor { height: 2.6rem; }
+  .fylt .snitt { font-size: 1.15rem; }
+  .fylt .snitt small { display: none; }
+  .fylt:not(.resultat) :is(footer, #kommentar-del) { display: none; }
+  /* Resultatet: sammendraget under takken til venstre. Første skjermbilde er resultatet, og kommentarene og
+     bunnteksten ligger under, så man ruller ned til dem. Siden ruller, ikke main, så kortene kan gå opp i hodet. */
+  html.storskjerm.resultat body { overflow-y: auto; }
+  .resultat main.wrap { grid-template-rows: 100%; }
+  .resultat .scene { grid-template-areas: "na topp" "sum topp"; grid-template-rows: auto minmax(0, 1fr); }
+  .resultat #na-kort { grid-area: na; }
+  .resultat #topp-del { grid-area: topp; }
+  .resultat .na-navn { font-size: 5vh; }
+  .resultat #sammendrag { grid-area: sum; min-height: 0; overflow: hidden; align-content: start; gap: 1.2vh; }
+  .resultat .oppsummering { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2vh 1vw; }
+  .resultat .oppsummering .kort { padding: 1.4vh 1vw; gap: .4vh; }
+  .resultat .oppsummering b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  /* Resultatet har bedre plass enn topplista under runden, så radene får mer luft. */
+  .resultat .soyler { gap: 1.4vh; }
+  .resultat .bane { height: 1.5rem; }
+  .resultat #kommentar-del { max-width: 60rem; }
+  .resultat footer { padding-bottom: 4vh; }
 }
 @media print {
   .julehode canvas, .julelys, .knapper, .ikke-utskrift, .qr { display: none !important; }
@@ -166,6 +184,10 @@ a.knapp { text-decoration: none; display: inline-block; }
       <ol class="soyler" id="soyler"></ol>
       <p class="igjen" id="igjen"></p>
     </section>
+    <section class="section" id="sammendrag" hidden>
+      <h2 class="stjerne">Sammendrag</h2>
+      <div class="oppsummering" id="oppsummering"></div>
+    </section>
   </div>
 
   <section class="section" id="skjenk-del" hidden>
@@ -175,11 +197,6 @@ a.knapp { text-decoration: none; display: inline-block; }
   </section>
 
   <p class="feil" id="feil" role="alert" hidden></p>
-
-  <section class="section" id="sammendrag" hidden>
-    <h2 class="stjerne">Sammendrag</h2>
-    <div class="oppsummering" id="oppsummering"></div>
-  </section>
 
   <section class="section" id="kommentar-del" hidden>
     <h2 class="stjerne">Kommentarer</h2>
@@ -243,7 +260,8 @@ const topplista = () => res.ol.filter(avslort).sort((a, b) => (b.snitt ?? -1) - 
 function tegn() {
   const na = res.ol.find((o) => o.plass === res.na);
   const fase = res.avsluttet ? "avsluttet" : !res.startet ? "for" : na ? "under" : "ferdig";
-  document.documentElement.classList.toggle("runde", fase !== "avsluttet");
+  document.documentElement.classList.add("fylt");
+  document.documentElement.classList.toggle("resultat", fase === "avsluttet");
   // Før start: koden, lenken og QR-koden. Etter start bare hvor langt dere har kommet, og verten deler lenken selv.
   $("kode-boks").hidden = fase !== "for";
   $("qr-stor").hidden = fase !== "for";
@@ -251,6 +269,7 @@ function tegn() {
   $("hode-tall").textContent = fase === "under" ? `Øl ${na.plass} av ${res.ol.length}`
     : fase === "ferdig" ? `Alle ${res.ol.length} øl er smakt` : "Resultatet";
   $("kopier-lenke").hidden = !vertNokkel || fase === "for" || fase === "avsluttet";
+  $("skjenk-lenke").hidden = !vertNokkel || fase === "avsluttet";
   $("na-bane").hidden = fase !== "under";
   $("na-stil").hidden = !(fase === "under" && na?.stil);
   const deltakere = `${res.deltakere} ${res.deltakere === 1 ? "deltaker" : "deltakere"}`;
