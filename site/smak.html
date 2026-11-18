@@ -149,8 +149,9 @@ async function visSmaking() {
   if (runde.avsluttet || runde.avslort?.length) resultat = await api(`/${kode}/resultater`);
   tegn();
   if (!runde.avsluttet && meg) {
-    // Spør etter runden hvert 30. sekund og med en gang fanen blir synlig. Tegner på nytt når verten har åpnet
-    // et øl, og henter resultatene bare når et øl er avslørt.
+    // Spør etter runden hvert 5. sekund, som storskjermen, og med en gang fanen blir synlig: folk står og venter
+    // på neste øl når verten går videre. Tegner på nytt når verten har åpnet et øl, og henter resultatene bare
+    // når et øl er avslørt.
     stoppPoll = poll(async () => {
       const ny = await api(`/${kode}`);
       if (!nyttAvslort(ny) && ny.startet === runde.startet && ny.na === runde.na) return;
@@ -159,7 +160,7 @@ async function visSmaking() {
       runde = ny;
       tegnOgBehold();
       if (ny.avsluttet) return "stopp";
-    }, 30000);
+    }, 5000);
   }
 }
 

@@ -399,15 +399,15 @@ test("sammendraget: favoritt, omstridt, overraskelse og den som er mest enig med
   assert.equal(s.untappdVenn.kallenavn, "Person 3");
 });
 
-test("en runde med 15 personer, 10 øl og 90 minutter bruker under 8 000 Redis-kommandoer", async () => {
+test("en runde med 15 personer, 10 øl og 90 minutter bruker under 25 000 Redis-kommandoer", async () => {
   const o = oppsett();
   const { kode, vertNokkel } = (await o.kall("POST", "", { ol: OL, blind: true })).body;
   const folk = [];
   for (let i = 0; i < 15; i++) folk.push((await o.kall("POST", `/${kode}/deltaker`, { kallenavn: `P${i}` })).body);
-  // Storskjermen spør hvert 5. sekund i 90 minutter, og deltakerne hvert 30. sekund hele tiden. Verten flytter
-  // ett øl og åpner første øl. Hvert øl får ni minutter: alle rater det i løpet av de første par minuttene, og
-  // så går verten videre. Da henter hver deltaker resultatene én gang.
-  const SPOR = 6, PER_OL = 108;
+  // Storskjermen og deltakerne spør hvert 5. sekund i 90 minutter. Verten flytter ett øl og åpner første øl.
+  // Hvert øl får ni minutter: alle rater det i løpet av de første par minuttene, og så går verten videre. Da
+  // henter hver deltaker resultatene én gang.
+  const SPOR = 1, PER_OL = 108;
   await o.kall("POST", `/${kode}/rekkefolge`, { vertNokkel, rekkefolge: [2, 1, 3, 4, 5, 6, 7, 8, 9, 10] });
   await neste(o, kode, vertNokkel, 0);
   for (let tikk = 0; tikk < 1080; tikk++) {
@@ -422,6 +422,6 @@ test("en runde med 15 personer, 10 øl og 90 minutter bruker under 8 000 Redis-k
     o.tid(5000);
   }
   await o.kall("POST", `/${kode}/avslutt`, { vertNokkel });
-  assert.ok(o.lager.antall < 8000, `${o.lager.antall} kommandoer`);
+  assert.ok(o.lager.antall < 25000, `${o.lager.antall} kommandoer`);
   console.log(`  kommandoer i en simulert runde: ${o.lager.antall}`);
 });

@@ -55,5 +55,9 @@ deploy på nytt for å slå smakerunden på igjen.
 
 ## Bruken av kvoten
 
-En runde med 15 personer, 10 øl og 90 minutter bruker rundt 7 450 kommandoer i Upstash, og gratisnivået har
-500 000 i måneden, delt med lunsjprosjektet. Bruken står i Upstash-konsollen.
+Storskjermen og telefonene spør hvert 5. sekund. En runde med 15 personer, 10 øl og 90 minutter bruker rundt
+21 000 kommandoer i Upstash, og gratisnivået har 500 000 i måneden, delt med lunsjprosjektet. Det gir plass til
+rundt 20 slike runder i måneden. Bruken står i Upstash-konsollen.
+
+Bremsen på 600 kall i minuttet per instans nås ved rundt 45 telefoner samtidig. Da får noen kall «For mange
+forespørsler», og telefonen prøver igjen fem sekunder etter.
