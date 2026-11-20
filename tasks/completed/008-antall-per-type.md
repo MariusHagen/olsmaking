@@ -4,10 +4,10 @@
 
 | Field | Value |
 |-------|-------|
-| Status | pending |
+| Status | completed |
 | Created | 2026-11-20 |
-| Completed | - |
-| Henger sammen med | [003](completed/003-velge-typer-og-mjod.md) (velge typer, høyst N per type) |
+| Completed | 2026-11-20 |
+| Henger sammen med | [003](003-velge-typer-og-mjod.md) (velge typer, høyst N per type) |
 
 ## Kort fortalt
 
@@ -50,7 +50,8 @@ låste øl:
 som gir «Det trengs minst … kr», tar de billigste ølene som de nedre grensene krever, og fyller resten med
 de billigste innenfor de øvre. Går de nedre grensene for Auto-typene ikke opp med budsjettet, regnes rekka på
 nytt uten dem, som i dag, og linja over rekka sier hvilke valgte typer som ikke kom med: «Budsjettet holdt
-ikke til alle typene: Bokk og Juleale er ikke med.» Faste antall slippes aldri. `bytter` bytter innenfor
+ikke til alle typene, så disse er ikke med: Sterk og fyldig, Porter og stout, Mjød.» Faste antall slippes
+aldri. `bytter` bytter innenfor
 samme type og trenger ingen endring.
 
 **Returverdien.** `velg` returnerer `grenser`, med `{ minst, hoyst }` per type, i stedet for `maksPerType`.
@@ -79,27 +80,27 @@ er et objekt med heltall fra 1 og opp, gir ingen lagret rekke, som andre ødelag
 `perType` mot typene i dataene, som den gjør med `typer`. Gamle lenker virker som før.
 
 **Linja over rekka** regnes ut fra rekka selv, så den stemmer også for delte og lagrede rekker. Blant
-Auto-typene som er med: «Én eller to av hver type.» når antallene er ulike, «To av hver type.» når de er
-like og over én, og ingenting når det er én av hver. Har noen type fast antall, står det etter: «Fast antall:
+Auto-typene som er med: «Ett eller to av hver type.» når antallene er ulike, «To av hver type.» når de er
+like og over én, og ingenting når det er ett av hver. Har noen type fast antall, står det etter: «Fast antall:
 Humle og IPA, Mjød.»
 
 ## Acceptance Criteria
 
-- [ ] Eksempelet under «Utgangspunktet» har alle ni typene i testdataene (test)
-- [ ] For mange kombinasjoner av typer, antall og budsjett har hver Auto-type et antall mellom nedre og
+- [x] Eksempelet under «Utgangspunktet» har alle ni typene i testdataene (test)
+- [x] For mange kombinasjoner av typer, antall og budsjett har hver Auto-type et antall mellom nedre og
       øvre grense, og typer med fast antall akkurat det (test)
-- [ ] Med faste antall og nedre grenser er valget fortsatt det beste settet: testen som prøver alle
+- [x] Med faste antall og nedre grenser er valget fortsatt det beste settet: testen som prøver alle
       kombinasjoner i det lille datasettet, har nedre og øvre grense per type
-- [ ] De tre feilmeldingene og «Det trengs minst … kr» med nedre grenser har tester
-- [ ] Når den jevne fordelingen ikke går opp med budsjettet, kommer rekka uten noen Auto-typer, og
+- [x] De tre feilmeldingene og «Det trengs minst … kr» med nedre grenser har tester
+- [x] Når den jevne fordelingen ikke går opp med budsjettet, kommer rekka uten noen Auto-typer, og
       `velg` sier hvilke (test)
-- [ ] Låste øl teller i sin type, også når de er flere enn antallet (test)
-- [ ] `perType` går gjennom lagringen, en lagret rekke uten feltet virker, og et ødelagt felt gir ingen
+- [x] Låste øl teller i sin type, også når de er flere enn antallet (test)
+- [x] `perType` går gjennom lagringen, en lagret rekke uten feltet virker, og et ødelagt felt gir ingen
       lagret rekke (tester i `tests/lagret.test.mjs`)
-- [ ] Testen for jevn fordeling er sett feile når den nedre grensen fjernes fra `besteSett`
-- [ ] I nettleseren: `pt` i lenken gir de samme antallene etter ny lasting, og skjermbilder av skjemaet i
+- [x] Testen for jevn fordeling er sett feile når den nedre grensen fjernes fra `besteSett`
+- [x] I nettleseren: `pt` i lenken gir de samme antallene etter ny lasting, og skjermbilder av skjemaet i
       360 og 1280 px, lyst og mørkt, med lista brukt fra tastaturet
-- [ ] README, hjelpeteksten under typene og CLAUDE.md beskriver fordelingen og antall per type
+- [x] README, hjelpeteksten under typene og CLAUDE.md beskriver fordelingen og antall per type
 
 ## Notes
 

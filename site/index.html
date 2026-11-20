@@ -44,6 +44,10 @@
 .typer-liste label:has(input:checked) { border-color: var(--rod); background: var(--rod-soft); }
 .typer-liste input { width: 16px; height: 16px; margin: 0; accent-color: var(--rod); }
 .typer-under { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.per-type { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 8px 18px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+.per-type label { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: .88rem; }
+.per-type label span { display: inline-flex; align-items: center; gap: 6px; }
+.per-type select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; }
 
 /* Status og glassrekka */
 .status { font-size: 1rem; }
@@ -175,8 +179,10 @@ details.bytt summary { cursor: pointer; color: var(--rod); font-weight: 600; }
       <div class="typer-liste" id="typer"></div>
       <div class="typer-under">
         <button type="button" class="lenkeknapp" id="alle-typer">Fjern alle</button>
-        <span class="hjelp">Velger du færre typer enn øl, kommer det flere av hver type.</span>
+        <button type="button" class="lenkeknapp" id="vis-per-type" aria-expanded="false" aria-controls="per-type">Velg antall per type</button>
+        <span class="hjelp">Ølene fordeles så jevnt som mulig på typene du velger.</span>
       </div>
+      <div class="per-type" id="per-type" hidden></div>
     </fieldset>
   </form>
 
@@ -247,7 +253,7 @@ import { sno } from "./sno.mjs";
 import { SMAKERUNDE, api, huskSkriv } from "./oppsett.mjs";
 import { NOKKEL as LAGRET, tilLagring, fraLagring } from "./lagret.mjs";
 
-const STANDARD = { butikk: null, personer: 5, budsjett: 1500, antall: 8, alkoholfrie: 0 };
+const STANDARD = { butikk: null, personer: 5, budsjett: 1500, antall: 8, alkoholfrie: 0, perType: {} };
 const NETT_TEKST = "Bestill på nett";
 const MIN_PERSONER = 2, MAX_PERSONER = 14, MIN_ANTALL = 4, MAX_ANTALL = 10, MAX_ALKOHOLFRIE = 4;
 const USIKKER = 30;
@@ -283,7 +289,9 @@ function glass(gruppe, id) {
     <path class="glass-outline" d="${BOWL}"/><rect class="glass-stem" x="28.75" y="61" width="2.5" height="27" rx="1"/><ellipse class="glass-stem" cx="30" cy="90" rx="13" ry="2.6"/></svg>`;
 }
 
-let data, valg = { ...STANDARD }, rekke = [], alkoholfrie = [], feil = null, maksPerType = 1;
+let data, valg = { ...STANDARD }, rekke = [], alkoholfrie = [], feil = null, utelatt = [];
+// Lista med antall per type: om den er åpen, og hvilke typer og hvilket antall øl den sist ble bygget for.
+let visPerType = false, perTypeTegnet = "";
 // Hvor rekka kommer fra: «ny» er regnet ut her, «lenke» fra en delt lenke, «lagret» er den lagrede uendret,
 // og «endret» er den lagrede med nye valg.
 let kilde = "ny", manglerFraLenke = 0, lagret = null;
@@ -317,6 +325,11 @@ function lesLenke() {
     typer: !p.has("t") ? [...data.rekkefolge]
       : p.get("t").split(",").filter(Boolean).map(Number).map((i) => data.rekkefolge[i]).filter(Boolean),
   };
+  // Fast antall per type står som plass:antall. Ukjente plasser og typer som ikke er valgt, hoppes over.
+  valg.perType = Object.fromEntries((p.get("pt") || "").split(",").map((par) => par.split(":").map(Number))
+    .filter(([i, k]) => valg.typer.includes(data.rekkefolge[i]) && Number.isInteger(k) && k >= 1)
+    .map(([i, k]) => [data.rekkefolge[i], Math.min(k, valg.antall)]));
+  visPerType = Object.keys(valg.perType).length > 0;
   const ider = (p.get("ol") || "").split(",").filter(Boolean);
   const afIder = (p.get("afol") || "").split(",").filter(Boolean);
   const las = new Set((p.get("las") || "").split(",").filter(Boolean));
@@ -336,7 +349,10 @@ function lesLenke() {
 }
 
 function visLagret() {
-  valg = { ...lagret.valg, typer: lagret.valg.typer.filter((g) => data.rekkefolge.includes(g)) };
+  const typer = lagret.valg.typer.filter((g) => data.rekkefolge.includes(g));
+  valg = { ...lagret.valg, typer, perType: Object.fromEntries(Object.entries(lagret.valg.perType ?? {}).filter(([g]) => typer.includes(g))) };
+  visPerType = Object.keys(valg.perType).length > 0;
+  utelatt = [];
   rekke = lagret.rekke.map((o) => ({ ...o }));
   alkoholfrie = lagret.alkoholfrie.map((o) => ({ ...o }));
   laast = new Map(alleIRekka().filter((o) => lagret.laste.includes(o.id)).map((o) => [o.id, o]));
@@ -352,6 +368,8 @@ function lenke() {
   p.set("n", valg.antall);
   p.set("af", valg.alkoholfrie);
   if (valg.typer.length !== data.rekkefolge.length) p.set("t", valg.typer.map((g) => data.rekkefolge.indexOf(g)).join(","));
+  const faste = data.rekkefolge.filter((g) => valg.perType[g] != null);
+  if (faste.length) p.set("pt", faste.map((g) => `${data.rekkefolge.indexOf(g)}:${valg.perType[g]}`).join(","));
   if (rekke.length) p.set("ol", rekke.map((o) => o.id).join(","));
   if (alkoholfrie.length) p.set("afol", alkoholfrie.map((o) => o.id).join(","));
   if (laast.size) p.set("las", [...laast.keys()].join(","));
@@ -375,7 +393,7 @@ function beregn() {
   rekke = r.rekke;
   alkoholfrie = r.alkoholfrie ?? [];
   feil = r.feil;
-  maksPerType = r.maksPerType ?? 1;
+  utelatt = r.utelatt ?? [];
   // Låsene får dagens tall når rekka gikk opp.
   for (const o of alleIRekka()) if (laast.has(o.id)) laast.set(o.id, o);
 }
@@ -516,6 +534,23 @@ function visValg() {
   $("alkoholfrie").value = String(valg.alkoholfrie);
   for (const boks of $("typer").querySelectorAll("input")) boks.checked = valg.typer.includes(boks.value);
   $("alle-typer").textContent = valg.typer.length === data.rekkefolge.length ? "Fjern alle" : "Velg alle";
+  tegnPerType();
+}
+// Lista bygges bare på nytt når typene eller antall øl endres, så fokuset blir stående i feltet man brukte.
+function tegnPerType() {
+  $("vis-per-type").setAttribute("aria-expanded", String(visPerType));
+  $("per-type").hidden = !visPerType;
+  const nokkel = `${valg.typer.join("|")}#${valg.antall}`;
+  if (nokkel !== perTypeTegnet) {
+    perTypeTegnet = nokkel;
+    $("per-type").innerHTML = valg.typer.length === 0 ? `<p class="hjelp">Velg minst én type.</p>`
+      : data.rekkefolge.filter((g) => valg.typer.includes(g)).map((g) => {
+        const valgene = ["auto", ...Array.from({ length: Math.max(valg.antall, valg.perType[g] ?? 0) }, (_, i) => String(i + 1))];
+        return `<label><span>${dot(g)}${esc(g)}</span><select data-type="${esc(g)}" aria-label="Antall ${esc(g)}">`
+          + `${valgene.map((v) => `<option value="${v}">${v === "auto" ? "Auto" : v}</option>`).join("")}</select></label>`;
+      }).join("");
+  }
+  for (const s of $("per-type").querySelectorAll("select")) s.value = String(valg.perType[s.dataset.type] ?? "auto");
 }
 $("valg").addEventListener("submit", (e) => e.preventDefault());
 $("minus").addEventListener("click", () => { if (valg.personer > MIN_PERSONER) { valg.personer--; oppdater(); } });
@@ -530,10 +565,22 @@ $("antall").addEventListener("change", () => { valg.antall = parseInt($("antall"
 $("alkoholfrie").addEventListener("change", () => { valg.alkoholfrie = parseInt($("alkoholfrie").value, 10); oppdater(); });
 $("typer").addEventListener("change", () => {
   valg.typer = [...$("typer").querySelectorAll("input:checked")].map((b) => b.value);
+  valg.perType = Object.fromEntries(Object.entries(valg.perType).filter(([g]) => valg.typer.includes(g)));
   oppdater();
 });
 $("alle-typer").addEventListener("click", () => {
   valg.typer = valg.typer.length === data.rekkefolge.length ? [] : [...data.rekkefolge];
+  valg.perType = {};
+  oppdater();
+});
+$("vis-per-type").addEventListener("click", () => { visPerType = !visPerType; tegnPerType(); });
+$("per-type").addEventListener("change", (e) => {
+  const felt = e.target.closest("select[data-type]");
+  if (!felt) return;
+  const ny = { ...valg.perType };
+  if (felt.value === "auto") delete ny[felt.dataset.type];
+  else ny[felt.dataset.type] = parseInt(felt.value, 10);
+  valg.perType = ny;
   oppdater();
 });
 $("ny-rekke").addEventListener("click", () => {
@@ -648,11 +695,25 @@ $("picks").addEventListener("click", (e) => {
   document.querySelector(`#ol-${plass + 1} h3`)?.focus();
 });
 
+// Fordelingen regnes ut fra rekka selv, så den stemmer også for en delt eller lagret rekke.
+function fordeling() {
+  const faste = data.rekkefolge.filter((g) => valg.perType[g] != null);
+  const telling = {};
+  for (const o of rekke) if (!faste.includes(o.gruppe)) telling[o.gruppe] = (telling[o.gruppe] ?? 0) + 1;
+  const antall = Object.values(telling);
+  const lav = Math.min(...antall), hoy = Math.max(...antall);
+  let t = "";
+  if (antall.length && hoy > 1) t += lav === hoy ? ` ${stor(ord(hoy))} av hver type.` : ` ${stor(ord(lav))} eller ${ord(hoy)} av hver type.`;
+  if (faste.length) t += ` Fast antall: ${faste.join(", ")}.`;
+  if (utelatt.length) t += ` Budsjettet holdt ikke til alle typene, så disse er ikke med: ${utelatt.join(", ")}.`;
+  return t;
+}
+
 function statusTekst(totalt) {
   if (feil) return feil;
   const sted = valg.butikk === NETT ? "på nett" : `i ${valg.butikk}`;
   let t = `${stor(ord(rekke.length))} øl ${sted} for ${kr(totalt)}, til ${valg.personer} personer.`;
-  if (maksPerType > 1 && !fraLagringen()) t += ` Opptil ${ord(maksPerType)} av hver type.`;
+  t += fordeling();
   if (alkoholfrie.length) t += alkoholfrie.length === 1 ? " Ett alkoholfritt i tillegg." : ` ${stor(ord(alkoholfrie.length))} alkoholfrie i tillegg.`;
   if (valg.alkoholfrie > alkoholfrie.length && !fraLagringen()) {
     t += alkoholfrie.length ? ` Fant ikke flere alkoholfrie som passer.` : " Fant ikke noe alkoholfritt juleøl som passer.";

@@ -8,6 +8,9 @@ const KANSKJE_TALL = ["score", "innsjekker"];
 // Lenkene vises som href, så bare de to stedene dataene lenker til, slipper gjennom.
 const LENKER = { polet: "https://www.vinmonopolet.no/", untappd: "https://untappd.com/" };
 const VALG_TALL = ["personer", "budsjett", "antall", "alkoholfrie"];
+// Fast antall for noen typer, som heltall fra 1. Rekker lagret før feltet fantes, har det ikke, og er Auto for alle.
+const gyldigPerType = (p) => p === undefined
+  || (typeof p === "object" && p !== null && !Array.isArray(p) && Object.values(p).every((k) => Number.isInteger(k) && k >= 1));
 
 // Det som trengs for å vise ølet og starte en smakerunde. Lagerstatus lagres ikke.
 function plukk(o) {
@@ -29,7 +32,7 @@ export function tilLagring({ valg, rekke, alkoholfrie, laste, lagret }) {
     versjon: 1,
     lagret,
     valg: { butikk: valg.butikk, personer: valg.personer, budsjett: valg.budsjett, antall: valg.antall,
-      alkoholfrie: valg.alkoholfrie, typer: [...valg.typer] },
+      alkoholfrie: valg.alkoholfrie, typer: [...valg.typer], perType: { ...(valg.perType ?? {}) } },
     rekke: rekke.map(plukk),
     alkoholfrie: alkoholfrie.map(plukk),
     laste: [...laste],
@@ -50,13 +53,14 @@ export function fraLagring(tekst) {
   if (typeof valg !== "object" || valg === null || typeof valg.butikk !== "string") return null;
   if (!VALG_TALL.every((f) => Number.isInteger(valg[f]))) return null;
   if (!Array.isArray(valg.typer) || !valg.typer.every((t) => typeof t === "string")) return null;
+  if (!gyldigPerType(valg.perType)) return null;
   if (!Array.isArray(v.rekke) || !Array.isArray(v.alkoholfrie) || v.rekke.length === 0) return null;
   if (![...v.rekke, ...v.alkoholfrie].every(gyldigOl)) return null;
   const ider = new Set([...v.rekke, ...v.alkoholfrie].map((o) => o.id));
   return {
     lagret: v.lagret,
     valg: { butikk: valg.butikk, personer: valg.personer, budsjett: valg.budsjett, antall: valg.antall,
-      alkoholfrie: valg.alkoholfrie, typer: [...valg.typer] },
+      alkoholfrie: valg.alkoholfrie, typer: [...valg.typer], perType: { ...(valg.perType ?? {}) } },
     rekke: v.rekke.map(plukk),
     alkoholfrie: v.alkoholfrie.map(plukk),
     laste: Array.isArray(v.laste) ? v.laste.filter((id) => ider.has(id)) : [],

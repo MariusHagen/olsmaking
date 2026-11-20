@@ -7,7 +7,7 @@ import { tilLagring, fraLagring } from "../site/lagret.mjs";
 
 const data = JSON.parse(readFileSync(new URL("./fixtures/juleol-2026-11-12.json", import.meta.url), "utf-8"));
 const TORG = "Trondheim, Trondheim Torg";
-const valg = { butikk: TORG, personer: 6, budsjett: 1500, antall: 8, alkoholfrie: 1, typer: [...data.rekkefolge] };
+const valg = { butikk: TORG, personer: 6, budsjett: 1500, antall: 8, alkoholfrie: 1, typer: [...data.rekkefolge], perType: { "Mjød": 1 } };
 const r = velg(data, valg);
 const lagring = () => tilLagring({ valg, rekke: r.rekke, alkoholfrie: r.alkoholfrie, laste: [r.rekke[1].id], lagret: "2026-11-13T18:00:00.000Z" });
 
@@ -42,9 +42,19 @@ test("ødelagte eller ukjente data gir ingen lagret rekke", () => {
     ["varenummer med HTML", endret((v) => { v.rekke[0].id = '1"/><img src=x onerror=alert(1)>'; return v; })],
     ["pris som tekst", endret((v) => { v.rekke[0].pris = "129,90"; return v; })],
     ["lenke til et annet sted", endret((v) => { v.rekke[0].polet = "javascript:alert(1)"; return v; })],
+    ["antall per type som liste", endret((v) => { v.valg.perType = [1]; return v; })],
+    ["antall per type null", endret((v) => { v.valg.perType = null; return v; })],
+    ["null av en type", endret((v) => { v.valg.perType = { "Mjød": 0 }; return v; })],
+    ["antall per type som tekst", endret((v) => { v.valg.perType = { "Mjød": "1" }; return v; })],
   ]) {
     assert.equal(fraLagring(tekst), null, navn);
   }
+});
+
+test("en rekke lagret før antall per type fantes, har Auto for alle typene", () => {
+  const gammel = JSON.parse(lagring());
+  delete gammel.valg.perType;
+  assert.deepEqual(fraLagring(JSON.stringify(gammel)).valg.perType, {});
 });
 
 test("låser på øl som ikke er i rekka, slippes", () => {

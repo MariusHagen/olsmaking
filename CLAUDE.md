@@ -11,8 +11,8 @@ Repoet og siden er offentlige.
 
 - `juleol.py` henter årets juleøl og julemjød med lager i alle butikker fra API-et til Ølmonopolet, i ett
   kall, og skriver `site/data/juleol.json`. Rekkefølgen på typene står i `REKKEFOLGE`. Bare standardbiblioteket.
-- `site/utvalg.mjs` regner ut rekka: det beste settet innenfor budsjettet, med høyst ett øl per type, eller
-  flere når man har valgt færre typer enn øl. Den har ingen tilgang til siden, så den testes for seg.
+- `site/utvalg.mjs` regner ut rekka: det beste settet innenfor budsjettet, med en nedre og øvre grense per
+  type. Ølene fordeles jevnt på typene, eller med det faste antallet man har valgt for en type. Den har ingen tilgang til siden, så den testes for seg.
 - `site/index.html` er siden. Den henter `data/juleol.json` når den åpnes, og har valgene i lenken.
 - `.github/workflows/publiser.yml` kjører testene, henter data og publiserer `site/` på GitHub Pages hver
   natt kl. 04 UTC, og når den startes for hånd.

@@ -124,9 +124,105 @@ test("færre typer enn øl gir flere per type, fordelt jevnt", () => {
   const typer = ["Porter og stout", "Bokk"];
   const r = velg(data, { butikk: TORG, personer: 5, budsjett: 5000, antall: 8, typer });
   assert.equal(r.rekke.length, 8);
-  assert.equal(r.maksPerType, 4);
-  for (const g of typer) assert.equal(r.rekke.filter((o) => o.gruppe === g).length, 4, g);
+  for (const g of typer) {
+    assert.deepEqual(r.grenser[g], { minst: 4, hoyst: 4 }, g);
+    assert.equal(r.rekke.filter((o) => o.gruppe === g).length, 4, g);
+  }
   assert.equal(new Set(r.rekke.map((o) => o.id)).size, 8, "ingen øl to ganger");
+});
+
+const NI = data.rekkefolge.filter((g) => !["Lys og frisk", "Gårdsøl og saison"].includes(g));
+
+test("ni typer og ti øl gir alle ni typene, ikke to av fem", () => {
+  const r = velg(data, { butikk: TORG, personer: 7, budsjett: 2500, antall: 10, typer: NI });
+  assert.equal(r.feil, null);
+  assert.deepEqual(Object.keys(perType(r.rekke)).sort(), [...NI].sort());
+  assert.ok(Object.values(perType(r.rekke)).every((n) => n <= 2));
+  assert.deepEqual(r.utelatt, []);
+});
+
+test("med nok budsjett fordeles ølene jevnt, og en type med fast antall får akkurat det", () => {
+  let sjekket = 0;
+  for (const typer of [NI, data.rekkefolge.slice(0, 6), data.rekkefolge.slice(-4), data.rekkefolge.slice(2, 5)]) {
+    for (const antall of [4, 6, 8, 10]) {
+      for (const fast of [{}, { [typer[1]]: 2 }]) {
+        const valg = { butikk: TORG, personer: 5, budsjett: 20000, antall, typer, perType: fast };
+        const r = velg(data, valg);
+        if (r.feil) continue;
+        const har = perType(kandidater(data, valg));
+        const auto = typer.filter((g) => !(g in fast));
+        const plasser = antall - (fast[typer[1]] ?? 0);
+        const lav = Math.floor(plasser / auto.length), hoy = Math.ceil(plasser / auto.length);
+        // Bare når alle Auto-typene har øl nok, kan fordelingen sjekkes uten å regne ut overløpet.
+        if (!auto.every((g) => (har[g] ?? 0) >= hoy)) continue;
+        sjekket++;
+        const telling = perType(r.rekke);
+        for (const g of auto) assert.ok((telling[g] ?? 0) >= lav && (telling[g] ?? 0) <= hoy, `${typer.length} typer, ${antall} øl: ${telling[g] ?? 0} av ${g}`);
+        if (typer[1] in fast) assert.equal(telling[typer[1]], 2);
+      }
+    }
+  }
+  assert.ok(sjekket > 20, `sjekket ${sjekket}`);
+});
+
+test("fast antall per type: to IPA og én mjød, og resten fordelt", () => {
+  const r = velg(data, { butikk: TORG, personer: 7, budsjett: 2500, antall: 10, typer: NI, perType: { "Humle og IPA": 2, "Mjød": 1 } });
+  assert.equal(r.feil, null);
+  const telling = perType(r.rekke);
+  assert.equal(telling["Humle og IPA"], 2);
+  assert.equal(telling["Mjød"], 1);
+  for (const g of NI.filter((t) => !["Humle og IPA", "Mjød"].includes(t))) assert.equal(telling[g], 1, g);
+});
+
+test("faste antall som ikke går opp, gir en feilmelding som sier hva som må endres", () => {
+  const v = { butikk: TORG, personer: 7, budsjett: 9000, antall: 10, typer: NI };
+  assert.match(velg(data, { ...v, perType: { "Humle og IPA": 6, "Mjød": 5 } }).feil, /Du har valgt 11 øl fordelt på typene, men 10 i alt/);
+  assert.match(velg(data, { ...v, antall: 8, typer: ["Humle og IPA", "Mjød"], perType: { "Humle og IPA": 3, "Mjød": 3 } }).feil,
+    /Typene gir 6 øl, men du har valgt 8/);
+  const mjod = kandidater(data, v).filter((o) => o.gruppe === "Mjød").length;
+  assert.ok(mjod < 10);
+  assert.equal(velg(data, { ...v, typer: ["Mjød", "Porter og stout"], perType: { "Mjød": 10 } }).feil,
+    `Bare ${mjod} Mjød passer her. Velg færre av Mjød.`);
+});
+
+test("holder ikke budsjettet til alle typene, faller noen ut, og velg sier hvilke", () => {
+  const r = velg(data, { butikk: TORG, personer: 10, budsjett: 1000, antall: 10, typer: NI });
+  assert.equal(r.feil, null);
+  assert.equal(r.rekke.length, 10);
+  assert.ok(pris(r) <= 1000);
+  assert.ok(r.utelatt.length > 0);
+  const telling = perType(r.rekke);
+  assert.deepEqual(r.utelatt, NI.filter((g) => !telling[g]));
+  // Et fast antall slippes ikke: typen kommer med, og andre faller ut i stedet.
+  const g = r.utelatt[0];
+  const fast = velg(data, { butikk: TORG, personer: 10, budsjett: 1000, antall: 10, typer: NI, perType: { [g]: 1 } });
+  assert.equal(fast.feil, null);
+  assert.equal(perType(fast.rekke)[g], 1);
+  assert.ok(fast.utelatt.length > 0 && !fast.utelatt.includes(g));
+});
+
+test("låste øl teller i sin type, også når de er flere enn antallet", () => {
+  const v = { butikk: TORG, personer: 7, budsjett: 5000, antall: 10, typer: NI, perType: { "Mjød": 1 } };
+  const laste = kandidater(data, v).filter((o) => o.gruppe === "Mjød").slice(0, 2);
+  const r = velg(data, { ...v, laste });
+  assert.equal(r.feil, null);
+  assert.equal(perType(r.rekke)["Mjød"], 2);
+  assert.deepEqual(r.grenser["Mjød"], { minst: 2, hoyst: 2 });
+  for (const l of laste) assert.ok(r.rekke.some((o) => o.id === l.id));
+});
+
+test("låste øl i en annen type tar plasser, så de faste antallene må få plass ved siden av dem", () => {
+  const [A, B, C] = ["Humle og IPA", "Porter og stout", "Mjød"];
+  const v = { butikk: TORG, personer: 5, budsjett: 5000, typer: [A, B, C], perType: { [A]: 2 } };
+  const stout = kandidater(data, v).filter((o) => o.gruppe === B);
+  for (const [antall, n] of [[2, 2], [4, 3]]) {
+    const r = velg(data, { ...v, antall, laste: stout.slice(0, n) });
+    assert.equal(r.feil, `Antallene du har valgt og de låste ølene gir ${2 + n} øl, men du har valgt ${antall}. Velg flere øl, færre av en type, eller lås opp noen.`);
+  }
+  // Med plass til begge: to IPA, de tre låste stoutene og resten til mjøden.
+  const r = velg(data, { ...v, antall: 6, laste: stout.slice(0, 3) });
+  assert.equal(r.feil, null);
+  assert.deepEqual(perType(r.rekke), { [A]: 2, [B]: 3, [C]: 1 });
 });
 
 test("mjøden kommer sist, og innenfor en type går det fra svakt til sterkt", () => {
@@ -162,20 +258,35 @@ test("valget er det beste settet som finnes, med ett og med flere øl per type",
         nett: true, lager: { 0: 99 } });
     }
   }
+  const [a, b, c] = data.rekkefolge;
+  // Grensene [minst, høyst] per type, regnet for hånd: plassene delt på Auto-typene, rundet ned og opp.
   const tilfeller = [
-    { typer: data.rekkefolge.slice(0, 6), antall: 4, maks: 1 },
-    { typer: data.rekkefolge.slice(0, 2), antall: 5, maks: 3 },
-    { typer: data.rekkefolge.slice(0, 1), antall: 4, maks: 4 },
+    { typer: data.rekkefolge.slice(0, 6), antall: 4, grenser: alleLike(data.rekkefolge.slice(0, 6), [0, 1]) },
+    { typer: data.rekkefolge.slice(0, 4), antall: 6, grenser: alleLike(data.rekkefolge.slice(0, 4), [1, 2]) },
+    { typer: data.rekkefolge.slice(0, 2), antall: 5, grenser: alleLike([a, b], [2, 3]) },
+    { typer: data.rekkefolge.slice(0, 1), antall: 4, grenser: alleLike([a], [4, 4]) },
+    { typer: [a, b, c], antall: 5, perType: { [a]: 1 }, grenser: { [a]: [1, 1], [b]: [2, 2], [c]: [2, 2] } },
+    { typer: [a, b, c], antall: 6, perType: { [a]: 3, [c]: 1 }, grenser: { [a]: [3, 3], [b]: [2, 2], [c]: [1, 1] } },
   ];
-  for (const { typer, antall, maks } of tilfeller) {
+  for (const { typer, antall, perType: fast = {}, grenser } of tilfeller) {
     for (const budsjett of [250, 400, 600, 900, 1500]) {
-      const valg = { butikk: "A", personer: 4, budsjett, antall, typer };
+      const valg = { butikk: "A", personer: 4, budsjett, antall, typer, perType: fast };
       const r = velg(syn, valg);
       const kand = kandidater(syn, valg).filter((o) => typer.includes(o.gruppe));
-      const best = alleKombinasjoner(kand, antall, maks, budsjett);
-      const navn = `${typer.length} typer, ${antall} øl, ${budsjett} kr`;
-      if (best === null) assert.ok(r.feil, `${navn}: ingen kombinasjon går, men utvalget fant en`);
-      else assert.ok(Math.abs(r.rekke.reduce((s, o) => s + o.justert, 0) - best) < 1e-9, navn);
+      const navn = `${typer.length} typer, ${antall} øl, ${JSON.stringify(fast)}, ${budsjett} kr`;
+      // Går ikke de nedre grensene for Auto-typene opp, gjelder det beste settet uten dem.
+      const jevn = alleKombinasjoner(kand, antall, grenser, budsjett);
+      const best = jevn ?? alleKombinasjoner(kand, antall, utenNedre(grenser, fast), budsjett);
+      if (best === null) {
+        assert.ok(r.feil, `${navn}: ingen kombinasjon går, men utvalget fant en`);
+        assert.equal(r.minstBudsjett, billigsteKombinasjon(kand, antall, utenNedre(grenser, fast)), `${navn}: minste budsjett`);
+        continue;
+      }
+      assert.ok(Math.abs(r.rekke.reduce((s, o) => s + o.justert, 0) - best) < 1e-9, navn);
+      const brukt = jevn === null ? utenNedre(grenser, fast) : grenser;
+      assert.deepEqual(r.grenser, Object.fromEntries(Object.entries(brukt).map(([t, [minst, hoyst]]) => [t, { minst, hoyst }])), navn);
+      const telling = perType(r.rekke);
+      assert.deepEqual(r.utelatt, jevn === null ? typer.filter((t) => grenser[t][0] > 0 && !telling[t]) : [], navn);
     }
   }
 });
@@ -191,61 +302,41 @@ test("har en type for få øl, får de andre typene flere", () => {
   }
   const valg = { butikk: "A", personer: 4, budsjett: 2000, antall: 5, typer: [liten, stor] };
   const r = velg(syn, valg);
-  assert.equal(r.maksPerType, 4);
+  assert.deepEqual(r.grenser, { [liten]: { minst: 1, hoyst: 4 }, [stor]: { minst: 2, hoyst: 4 } });
   assert.equal(r.rekke.length, 5);
   assert.equal(r.rekke.filter((o) => o.gruppe === stor).length, 4);
-  const best = alleKombinasjoner(kandidater(syn, valg), 5, 4, 2000);
+  const best = alleKombinasjoner(kandidater(syn, valg), 5, { [liten]: [1, 4], [stor]: [2, 4] }, 2000);
   assert.ok(Math.abs(r.rekke.reduce((s, o) => s + o.justert, 0) - best) < 1e-9);
 });
 
-// Prøver alle sett med n øl og høyst «maks» per type.
-function alleKombinasjoner(kand, n, maks, budsjett) {
+const alleLike = (typer, grense) => Object.fromEntries(typer.map((t) => [t, grense]));
+// Grensene uten den nedre for Auto-typene, som når budsjettet ikke holder til dem.
+const utenNedre = (grenser, fast) => Object.fromEntries(Object.entries(grenser).map(([t, [minst, hoyst]]) => [t, [t in fast ? minst : 0, hoyst]]));
+
+// Prøver alle sett med n øl i alt der de låste er med og antallet av hver type er innenfor grensene
+// [minst, høyst]. Gir den høyeste samlede scoren, eller den laveste prisen med «billigst».
+function alleKombinasjoner(kand, n, grenser, budsjett, laste = [], billigst = false) {
   let best = null;
-  const prov = (i, valgt, perType, kost, score) => {
+  const prov = (i, valgt, telling, kost, score) => {
     if (kost > budsjett) return;
     if (valgt === n) {
-      if (best === null || score > best) best = score;
+      if (!Object.entries(grenser).every(([t, [minst]]) => (telling[t] ?? 0) >= minst)) return;
+      const verdi = billigst ? kost : score;
+      if (best === null || (billigst ? verdi < best : verdi > best)) best = verdi;
       return;
     }
     if (i === kand.length) return;
-    prov(i + 1, valgt, perType, kost, score);
+    prov(i + 1, valgt, telling, kost, score);
     const o = kand[i];
-    if ((perType[o.gruppe] ?? 0) < maks) {
-      prov(i + 1, valgt + 1, { ...perType, [o.gruppe]: (perType[o.gruppe] ?? 0) + 1 }, kost + o.kostnad, score + o.justert);
+    if ((telling[o.gruppe] ?? 0) < (grenser[o.gruppe]?.[1] ?? 0)) {
+      prov(i + 1, valgt + 1, { ...telling, [o.gruppe]: (telling[o.gruppe] ?? 0) + 1 }, kost + o.kostnad, score + o.justert);
     }
   };
-  prov(0, 0, {}, 0, 0);
+  prov(0, laste.length, perType(laste), laste.reduce((s, o) => s + o.kostnad, 0), laste.reduce((s, o) => s + o.justert, 0));
   return best;
 }
 
-// Prøver alle sett der de låste er med, med n øl i alt og høyst «maks» per type.
-function alleMedLaste(kand, laste, n, maks, budsjett) {
-  const perType = {};
-  for (const o of laste) perType[o.gruppe] = (perType[o.gruppe] ?? 0) + 1;
-  const kost = laste.reduce((s, o) => s + o.kostnad, 0);
-  const score = laste.reduce((s, o) => s + o.justert, 0);
-  const ledig = alleKombinasjonerFra(kand, n - laste.length, maks, budsjett - kost, perType);
-  return ledig === null ? null : score + ledig;
-}
-
-function alleKombinasjonerFra(kand, n, maks, budsjett, start) {
-  let best = null;
-  const prov = (i, valgt, perType, kost, score) => {
-    if (kost > budsjett) return;
-    if (valgt === n) {
-      if (best === null || score > best) best = score;
-      return;
-    }
-    if (i === kand.length) return;
-    prov(i + 1, valgt, perType, kost, score);
-    const o = kand[i];
-    if ((perType[o.gruppe] ?? 0) < maks) {
-      prov(i + 1, valgt + 1, { ...perType, [o.gruppe]: (perType[o.gruppe] ?? 0) + 1 }, kost + o.kostnad, score + o.justert);
-    }
-  };
-  prov(0, 0, start, 0, 0);
-  return best;
-}
+const billigsteKombinasjon = (kand, n, grenser) => alleKombinasjoner(kand, n, grenser, Infinity, [], true);
 
 const perType = (rekke) => rekke.reduce((t, o) => ({ ...t, [o.gruppe]: (t[o.gruppe] ?? 0) + 1 }), {});
 
@@ -264,7 +355,10 @@ test("låste øl er med når antall personer, budsjett og antall endres, innenfo
         for (const l of laste) assert.ok(r.rekke.some((o) => o.id === l.id), `${navn}: ${l.navn} mangler`);
         assert.equal(new Set(r.rekke.map((o) => o.id)).size, antall, `${navn}: samme øl to ganger`);
         assert.ok(pris(r) <= budsjett, `${navn}: rekka koster ${pris(r)}`);
-        for (const [g, n] of Object.entries(perType(r.rekke))) assert.ok(n <= r.maksPerType, `${navn}: ${n} av ${g}`);
+        const telling = perType(r.rekke);
+        for (const [g, { minst, hoyst }] of Object.entries(r.grenser)) {
+          assert.ok((telling[g] ?? 0) >= minst && (telling[g] ?? 0) <= hoyst, `${navn}: ${telling[g] ?? 0} av ${g}, grensene ${minst} og ${hoyst}`);
+        }
         const laast = r.rekke.find((o) => o.id === laste[0].id);
         assert.equal(laast.flasker, flasker(laast, personer));
       }
@@ -285,11 +379,14 @@ test("med låste øl er valget fortsatt det beste settet, også med flere låste
         nett: true, lager: { 0: 99 } });
     }
   }
+  const [a, b, c] = data.rekkefolge;
+  const seks = data.rekkefolge.slice(0, 6);
   const tilfeller = [
-    { typer: data.rekkefolge.slice(0, 6), antall: 4, laste: ["0"], maks: 1 },
-    { typer: data.rekkefolge.slice(0, 6), antall: 4, laste: ["0", "1"], maks: 2 },
-    { typer: data.rekkefolge.slice(0, 2), antall: 5, laste: ["7", "8"], maks: 3 },
-    { typer: data.rekkefolge.slice(1, 3), antall: 4, laste: ["0"], maks: 2 },
+    // Øl 0 og 1 er av den første typen, 7 og 8 av den andre. Låste over typens del blir stående.
+    { typer: seks, antall: 4, laste: ["0"], grenser: { ...alleLike(seks, [0, 1]), [a]: [1, 1] } },
+    { typer: seks, antall: 4, laste: ["0", "1"], grenser: { ...alleLike(seks, [0, 1]), [a]: [2, 2] } },
+    { typer: [a, b], antall: 5, laste: ["7", "8"], grenser: alleLike([a, b], [2, 3]) },
+    { typer: [b, c], antall: 4, laste: ["0"], grenser: alleLike([b, c], [1, 2]) },
   ];
   for (const t of tilfeller) {
     for (const budsjett of [400, 600, 900, 1500]) {
@@ -297,13 +394,15 @@ test("med låste øl er valget fortsatt det beste settet, også med flere låste
       const laste = kandidater(syn, valg).filter((o) => t.laste.includes(o.id));
       const r = velg(syn, { ...valg, laste });
       const kand = kandidater(syn, valg).filter((o) => t.typer.includes(o.gruppe) && !t.laste.includes(o.id));
-      const best = alleMedLaste(kand, laste, t.antall, t.maks, budsjett);
+      const jevn = alleKombinasjoner(kand, t.antall, t.grenser, budsjett, laste);
+      const best = jevn ?? alleKombinasjoner(kand, t.antall, utenNedre(t.grenser, {}), budsjett, laste);
       const navn = `låst ${t.laste}, ${t.typer.length} typer, ${t.antall} øl, ${budsjett} kr`;
       if (best === null) {
         assert.ok(r.feil, `${navn}: ingen kombinasjon går, men utvalget fant en`);
         continue;
       }
-      assert.equal(r.maksPerType, t.maks, navn);
+      const brukt = jevn === null ? utenNedre(t.grenser, {}) : t.grenser;
+      assert.deepEqual(r.grenser, Object.fromEntries(Object.entries(brukt).map(([g, [minst, hoyst]]) => [g, { minst, hoyst }])), navn);
       for (const l of t.laste) assert.ok(r.rekke.some((o) => o.id === l), `${navn}: ${l} mangler`);
       assert.ok(Math.abs(r.rekke.reduce((s, o) => s + o.justert, 0) - best) < 1e-9, navn);
     }

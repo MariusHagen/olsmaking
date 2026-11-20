@@ -77,11 +77,63 @@ function maksPerGruppe(lister, n) {
   return n;
 }
 
-// Det settet med nøyaktig n øl, høyst grenser[g] fra gruppe g, som gir høyest samlet score innenfor
+// Nedre og øvre grense for hver valgt type, for hele rekka med de låste. Et fast antall er begge grensene.
+// Auto-typene deler plassene som er igjen: minst plassene delt på typene, rundet ned, og høyst som i
+// maksPerGruppe, så de andre får flere når én type har for få øl. Låste øl over typens del blir stående.
+function grenserFor(typer, lister, laste, perType, antall) {
+  const lastI = (g) => laste.filter((o) => o.gruppe === g).length;
+  const har = (g) => lister[typer.indexOf(g)].length + lastI(g);
+  const grenser = {};
+  let fast = 0;
+  for (const g of typer.filter((t) => perType[t] != null)) {
+    const k = Math.max(perType[g], lastI(g));
+    if (har(g) < k) return { feil: `Bare ${har(g)} ${g} passer her. Velg færre av ${g}.` };
+    grenser[g] = { minst: k, hoyst: k };
+    fast += k;
+  }
+  // Låste øl utenfor typene med fast antall tar også plasser, så de faste antallene må få plass ved siden av dem.
+  const andreLaste = laste.filter((o) => !(typer.includes(o.gruppe) && perType[o.gruppe] != null)).length;
+  if (fast + andreLaste > antall) {
+    return { feil: andreLaste
+      ? `Antallene du har valgt og de låste ølene gir ${fast + andreLaste} øl, men du har valgt ${antall}. Velg flere øl, færre av en type, eller lås opp noen.`
+      : `Du har valgt ${fast} øl fordelt på typene, men ${antall} i alt. Velg flere øl, eller færre av en type.` };
+  }
+  const igjen = antall - laste.filter((o) => !typer.includes(o.gruppe)).length - fast;
+  const auto = typer.filter((g) => perType[g] == null);
+  for (const g of auto) grenser[g] = { minst: 0, hoyst: 0 };
+  const med = auto.filter((g) => har(g) > 0);
+  if (med.length === 0) {
+    if (igjen > 0) return { feil: `Typene gir ${fast} øl, men du har valgt ${antall}. Velg flere av en type, eller sett en på Auto.` };
+    return { grenser };
+  }
+  const hoyst = maksPerGruppe(med.map((g) => ({ length: har(g) })), igjen);
+  let rest = med, plasser = igjen, del = 0;
+  for (;;) {
+    del = Math.floor(plasser / rest.length);
+    const over = rest.filter((g) => lastI(g) > del);
+    if (over.length === 0) break;
+    plasser -= sum(over, lastI);
+    rest = rest.filter((g) => !over.includes(g));
+    if (rest.length === 0) break;
+  }
+  for (const g of med) grenser[g] = { minst: rest.includes(g) ? Math.min(del, har(g)) : lastI(g), hoyst: Math.max(hoyst, lastI(g)) };
+  return { grenser };
+}
+
+// Prisen på det billigste settet med n øl innenfor grensene: de billigste som de nedre grensene krever, og så de
+// billigste av resten. Gruppene er sortert på kostnad.
+function billigstMulig(grupper, minst, hoyst, n) {
+  const kreves = grupper.flatMap((l, g) => l.slice(0, minst[g]).map((o) => o.kostnad));
+  const valgfrie = grupper.flatMap((l, g) => l.slice(minst[g], hoyst[g]).map((o) => o.kostnad)).sort((a, b) => a - b);
+  if (kreves.length > n || kreves.length + valgfrie.length < n) return Infinity;
+  return sum(kreves, (x) => x) + sum(valgfrie.slice(0, n - kreves.length), (x) => x);
+}
+
+// Det settet med nøyaktig n øl, mellom minst[g] og hoyst[g] fra gruppe g, som gir høyest samlet score innenfor
 // budsjettet. Dynamisk programmering over øl, antall fra gruppa, antall i alt og kroner, med et bitsett per
 // øl for å finne tilbake til valgene. Noen millioner enkle steg.
-function besteSett(grupper, n, budsjett, grenser) {
-  const dyrest = (l, g) => sum(l.map((o) => o.kostnad).sort((a, b) => b - a).slice(0, grenser[g]), (x) => x);
+function besteSett(grupper, n, budsjett, minst, hoyst) {
+  const dyrest = (l, g) => sum(l.map((o) => o.kostnad).sort((a, b) => b - a).slice(0, hoyst[g]), (x) => x);
   const B = Math.min(budsjett, sum(grupper.map((l, g) => dyrest(l, g)), (x) => x));
   const R = B + 1;          // én rad per antall i alt, én kolonne per krone
   const S = (n + 1) * R;    // tilstander for ett antall fra gruppa
@@ -90,7 +142,7 @@ function besteSett(grupper, n, budsjett, grenser) {
   dp.fill(0, 0, R);
   const spor = [];
   for (const [g, liste] of grupper.entries()) {
-    const K = Math.min(grenser[g], liste.length);
+    const K = Math.min(hoyst[g], liste.length);
     const lag = [dp, ...Array.from({ length: K }, () => new Float64Array(S).fill(-Infinity))];
     const bits = [];
     for (const o of liste) {
@@ -114,7 +166,7 @@ function besteSett(grupper, n, budsjett, grenser) {
     }
     const ny = new Float64Array(S).fill(-Infinity);
     const kValg = new Uint8Array(S);
-    for (let k = 0; k <= K; k++) {
+    for (let k = minst[g]; k <= K; k++) {
       for (let i = 0; i < S; i++) {
         if (lag[k][i] > ny[i]) {
           ny[i] = lag[k][i];
@@ -155,8 +207,9 @@ function medLaste(data, valg, laste, snitt) {
   });
 }
 
-// valg: { butikk: butikknavn eller NETT, personer, budsjett, antall, alkoholfrie, typer, laste }
+// valg: { butikk: butikknavn eller NETT, personer, budsjett, antall, alkoholfrie, typer, perType, laste }
 // typer er navnene på smaksgruppene som skal være med. Mangler den, er alle med.
+// perType er et fast antall for noen av typene, for eksempel { "Mjød": 1 }. De andre er på Auto.
 // alkoholfrie er et antall. Gamle lenker har alkoholfritt: true, som betyr ett.
 // laste er øl som skal være med uansett, som hele objekter, så de kan komme fra en lagret rekke.
 export function velg(data, valg) {
@@ -219,7 +272,8 @@ export function velg(data, valg) {
 }
 
 // Den beste rekka for typene, antallet og budsjettet, uten de alkoholfrie. De låste er med uansett og teller
-// i grensen per type: hver type får grensen minus sine låste, og bare de ledige plassene velges.
+// i grensene for sin type, og bare de ledige plassene velges. Holder ikke budsjettet til den nedre grensen for
+// Auto-typene, velges rekka uten den, og utelatt sier hvilke typer som falt ut. Faste antall slippes aldri.
 function rekkeFor(data, valg, alle, budsjett, laste = []) {
   const typer = valg.typer ? data.rekkefolge.filter((g) => valg.typer.includes(g)) : data.rekkefolge;
   if (typer.length === 0 && laste.length === 0) return { rekke: [], feil: "Velg minst én type." };
@@ -234,22 +288,32 @@ function rekkeFor(data, valg, alle, budsjett, laste = []) {
     return { rekke: [], maksAntall: mulig,
       feil: `Bare ${mulig} øl av disse typene passer her. Velg ${mulig} øl eller færre, eller flere typer.` };
   }
-  // Grensen regnes for hele rekka, med de låste, og er aldri lavere enn de låste av én type.
-  const fulle = typer.map((g, i) => lister[i].length + lastI(g)).filter((x) => x > 0).map((x) => ({ length: x }));
-  // Låste øl fra typer som ikke er valgt, tar plasser, men hører ikke til noen av de valgte typene.
-  const iValgte = valg.antall - laste.filter((o) => !typer.includes(o.gruppe)).length;
-  const maks = Math.max(fulle.length ? maksPerGruppe(fulle, iValgte) : 1, ...laste.map((o) => lastI(o.gruppe)));
+  const perType = valg.perType ?? {};
+  const g0 = grenserFor(typer, lister, laste, perType, valg.antall);
+  if (g0.feil) return { rekke: [], feil: g0.feil };
   if (n === 0) {
     if (lastKost > budsjett) return { rekke: [], minstBudsjett: lastKost, feil: "budsjett" };
-    return { rekke: ordne([...laste]), maksPerType: maks, feil: null };
+    return { rekke: ordne([...laste]), grenser: g0.grenser, utelatt: [], feil: null };
   }
-  const med = typer.map((g, i) => ({ liste: lister[i], grense: maks - lastI(g) })).filter((x) => x.liste.length > 0 && x.grense > 0);
-  const grenser = med.map((x) => x.grense);
-  const grupper = med.map((x) => utenDominerte(x.liste, x.grense));
-  const billigst = sum(grupper.flatMap((l, g) => l.slice(0, grenser[g]).map((o) => o.kostnad)).sort((a, b) => a - b).slice(0, n), (x) => x);
-  const rekke = billigst <= budsjett - lastKost ? besteSett(grupper, n, budsjett - lastKost, grenser) : null;
+  const forsok = (grenser) => {
+    const med = typer.map((g, i) => ({ liste: lister[i], minst: Math.max(0, grenser[g].minst - lastI(g)), hoyst: grenser[g].hoyst - lastI(g) }))
+      .filter((x) => x.liste.length > 0 && x.hoyst > 0);
+    const minst = med.map((x) => x.minst), hoyst = med.map((x) => x.hoyst);
+    const grupper = med.map((x) => utenDominerte(x.liste, x.hoyst));
+    const billigst = billigstMulig(grupper, minst, hoyst, n);
+    const rekke = billigst <= budsjett - lastKost ? besteSett(grupper, n, budsjett - lastKost, minst, hoyst) : null;
+    return { rekke, billigst };
+  };
+  let grenser = g0.grenser;
+  let { rekke, billigst } = forsok(grenser);
+  if (!rekke && typer.some((g) => perType[g] == null && grenser[g].minst > lastI(g))) {
+    grenser = Object.fromEntries(typer.map((g) => [g, perType[g] == null ? { ...grenser[g], minst: 0 } : grenser[g]]));
+    ({ rekke, billigst } = forsok(grenser));
+  }
   if (!rekke) return { rekke: [], minstBudsjett: billigst + lastKost, feil: "budsjett" };
-  return { rekke: ordne([...laste, ...rekke]), maksPerType: maks, feil: null };
+  const iRekka = new Set([...laste, ...rekke].map((o) => o.gruppe));
+  const utelatt = typer.filter((g) => g0.grenser[g].minst > 0 && !iRekka.has(g));
+  return { rekke: ordne([...laste, ...rekke]), grenser, utelatt, feil: null };
 }
 
 // De beste andre ølene fra samme gruppe som holder budsjettet når de byttes inn på denne plassen.
