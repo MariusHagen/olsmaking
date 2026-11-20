@@ -11,8 +11,8 @@
 
 ## Kort fortalt
 
-Typene man krysser av, kommer med i rekka når det er minst like mange øl som typer og typen har øl i
-butikken, og ølene fordeles så jevnt som mulig. I dag kan typer med lav score falle helt ut. Bak lenken
+Typene man krysser av, kommer med i rekka når det er minst like mange øl som typer, typen har øl i butikken
+og budsjettet holder, og ølene fordeles så jevnt som mulig. Ellers sier siden hvilke som ikke kom med. Bak lenken
 «Velg antall per type» kan man gi hver valgt type et fast antall, for eksempel to IPA og én mjød, mens
 typene på «Auto» deler resten. Antallene står i lenken og i den lagrede rekka. Score og budsjett virker som
 før. Rundt en halvtime, og Marius' gjennomgang kommer i tillegg.
@@ -48,7 +48,10 @@ låste øl:
 
 **Søket.** `besteSett` får en nedre grense per type i tillegg til den øvre. Det billigste mulige settet,
 som gir «Det trengs minst … kr», tar de billigste ølene som de nedre grensene krever, og fyller resten med
-de billigste innenfor de øvre. `bytter` bytter innenfor samme type og trenger ingen endring.
+de billigste innenfor de øvre. Går de nedre grensene for Auto-typene ikke opp med budsjettet, regnes rekka på
+nytt uten dem, som i dag, og linja over rekka sier hvilke valgte typer som ikke kom med: «Budsjettet holdt
+ikke til alle typene: Bokk og Juleale er ikke med.» Faste antall slippes aldri. `bytter` bytter innenfor
+samme type og trenger ingen endring.
 
 **Returverdien.** `velg` returnerer `grenser`, med `{ minst, hoyst }` per type, i stedet for `maksPerType`.
 Testene som bruker `maksPerType`, skrives om til `grenser`, og `alleKombinasjoner` i testen for det beste
@@ -88,6 +91,8 @@ Humle og IPA, Mjød.»
 - [ ] Med faste antall og nedre grenser er valget fortsatt det beste settet: testen som prøver alle
       kombinasjoner i det lille datasettet, har nedre og øvre grense per type
 - [ ] De tre feilmeldingene og «Det trengs minst … kr» med nedre grenser har tester
+- [ ] Når den jevne fordelingen ikke går opp med budsjettet, kommer rekka uten noen Auto-typer, og
+      `velg` sier hvilke (test)
 - [ ] Låste øl teller i sin type, også når de er flere enn antallet (test)
 - [ ] `perType` går gjennom lagringen, en lagret rekke uten feltet virker, og et ødelagt felt gir ingen
       lagret rekke (tester i `tests/lagret.test.mjs`)
@@ -100,9 +105,3 @@ Humle og IPA, Mjød.»
 
 Review etter `review-etter-risiko`: utvalget med endrede tester og siden. Ingen endring i API-et eller
 smakerunden.
-
-### Åpent
-
-- Når den jevne fordelingen ikke går opp med budsjettet, skal Auto-typene da kunne falle ut som i dag, med
-  en linje om hvilke typer som ikke kom med, eller skal siden si «Det trengs minst … kr»? Med testdataene
-  gjelder det 4 av 146 kombinasjoner som går opp i dag, for eksempel ni typer, 10 personer, 1 000 kr og 10 øl.
