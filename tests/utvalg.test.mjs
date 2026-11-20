@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { velg, bytter, kandidater, justertScore, fraVarenumre, NETT } from "../site/utvalg.mjs";
+import { velg, bytter, kandidater, justertScore, fraVarenumre, flasker, NETT } from "../site/utvalg.mjs";
 
 const data = JSON.parse(readFileSync(new URL("./fixtures/juleol-2026-11-12.json", import.meta.url), "utf-8"));
 const TORG = "Trondheim, Trondheim Torg";
@@ -25,6 +25,23 @@ test("rekka holder budsjettet, eller sier at det ikke går opp", () => {
   }
   // Begge utfallene må faktisk forekomme, ellers sjekker testen ingenting.
   assert.ok(gikkOpp > 20 && gikkIkke > 5, `gikk opp ${gikkOpp}, gikk ikke ${gikkIkke}`);
+});
+
+test("flaskene gir det siden viser som ca. 7 cl, eller ca. 5 cl av sterke øl, og ikke en flaske mer", () => {
+  assert.equal(flasker({ alkohol: 12, cl: 33 }, 7), 1, "4,7 cl er ca. 5 cl");
+  assert.equal(flasker({ alkohol: 19, cl: 33 }, 8), 2, "4,1 cl er for lite");
+  assert.equal(flasker({ alkohol: 5, cl: 33 }, 5), 1, "6,6 cl er ca. 7 cl");
+  assert.equal(flasker({ alkohol: 5, cl: 44 }, 7), 2, "6,3 cl er for lite");
+  // Det samme som siden viser i «ca. … cl hver».
+  const vist = (f, o, personer) => Math.round((f * o.cl) / personer + 1e-9);
+  for (const o of data.ol) {
+    const maal = o.alkohol >= 10 ? 5 : 7;
+    for (let personer = 2; personer <= 14; personer++) {
+      const f = flasker(o, personer);
+      assert.ok(vist(f, o, personer) >= maal, `${o.navn}, ${personer} personer: ${f} flasker gir for lite`);
+      assert.ok(f === 1 || vist(f - 1, o, personer) < maal, `${o.navn}, ${personer} personer: ${f} flasker er én for mye`);
+    }
+  }
 });
 
 test("høyst ett øl per smaksgruppe, fra lett til tungt", () => {
@@ -84,14 +101,14 @@ test("antall alkoholfrie: så mange som ønsket, aldri flere enn det finnes, og 
 });
 
 test("med trangt budsjett velges et billigere alkoholfritt heller enn at rekka ikke går opp", () => {
-  // 650 kr: det beste alkoholfrie (61 kr) og den billigste rekka (597 kr) går ikke opp, men det billigste (51 kr) gjør.
-  const r = velg(data, { butikk: TORG, personer: 5, budsjett: 650, antall: 8, alkoholfrie: 1 });
+  // Seks personer og 650 kr: det beste alkoholfrie (61 kr) og den billigste rekka (597 kr) går ikke opp, men det billigste (51 kr) gjør.
+  const r = velg(data, { butikk: TORG, personer: 6, budsjett: 650, antall: 8, alkoholfrie: 1 });
   assert.equal(r.feil, null);
   assert.equal(r.rekke.length, 8);
   assert.equal(r.alkoholfrie.length, 1);
   assert.ok(pris(r) <= 650);
   // Går det ikke opp i det hele tatt, regner meldingen med de alkoholfrie som ble ønsket.
-  const ikke = velg(data, { butikk: TORG, personer: 5, budsjett: 500, antall: 8, alkoholfrie: 1 });
+  const ikke = velg(data, { butikk: TORG, personer: 6, budsjett: 500, antall: 8, alkoholfrie: 1 });
   assert.match(ikke.feil, /Budsjettet holder ikke/);
   assert.ok(ikke.minstBudsjett > 597);
 });
@@ -249,7 +266,7 @@ test("låste øl er med når antall personer, budsjett og antall endres, innenfo
         assert.ok(pris(r) <= budsjett, `${navn}: rekka koster ${pris(r)}`);
         for (const [g, n] of Object.entries(perType(r.rekke))) assert.ok(n <= r.maksPerType, `${navn}: ${n} av ${g}`);
         const laast = r.rekke.find((o) => o.id === laste[0].id);
-        assert.equal(laast.flasker, Math.max(1, Math.ceil((personer * (laast.alkohol >= 10 ? 5 : 7)) / laast.cl - 1e-9)));
+        assert.equal(laast.flasker, flasker(laast, personer));
       }
     }
   }

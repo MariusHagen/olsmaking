@@ -10,10 +10,11 @@ const MARGIN = 2;
 const etterScore = (a, b) => b.justert - a.justert;
 const sum = (liste, f) => liste.reduce((s, x) => s + f(x), 0);
 
-// Rundt 7 cl per person, og 5 cl av øl på 10 % eller mer.
+// Rundt 7 cl per person, og 5 cl av øl på 10 % eller mer. Flaskene er nok når siden kan vise «ca. 7 cl» eller
+// «ca. 5 cl»: krevde vi hele målet, fikk et sterkt øl på 33 cl dobbelt så mye til sju personer fordi én flaske ga 4,7 cl.
 export function flasker(ol, personer) {
   const maal = ol.alkohol >= 10 ? 5 : 7;
-  return Math.max(1, Math.ceil((personer * maal) / ol.cl - 1e-9));
+  return Math.max(1, Math.ceil((personer * (maal - 0.5)) / ol.cl - 1e-9));
 }
 
 export function justertScore(score, innsjekker, snitt) {
